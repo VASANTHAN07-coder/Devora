@@ -29,6 +29,7 @@ import com.enterprise.devicemanager.data.model.EnrollRequest
 import com.enterprise.devicemanager.data.network.RetrofitClient
 import com.enterprise.devicemanager.ui.components.GlassCard
 import com.enterprise.devicemanager.ui.components.MintGradientButton
+import com.enterprise.devicemanager.ui.components.PermissionRequestCard
 import com.enterprise.devicemanager.ui.screens.login.LoginTextField
 import com.enterprise.devicemanager.ui.theme.MintGreen
 import com.enterprise.devicemanager.ui.theme.PillShape
@@ -70,6 +71,11 @@ fun EnrollmentScreen(isDark: Boolean) {
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Runtime permissions request
+        PermissionRequestCard()
 
         Spacer(modifier = Modifier.height(20.dp))
 
