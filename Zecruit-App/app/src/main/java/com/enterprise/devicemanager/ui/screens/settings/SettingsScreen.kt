@@ -21,10 +21,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import com.enterprise.devicemanager.ui.components.GlassCard
 import com.enterprise.devicemanager.ui.theme.MintGradient
 import com.enterprise.devicemanager.ui.theme.MintGreen
 import com.enterprise.devicemanager.ui.theme.PillShape
+import com.enterprise.devicemanager.worker.DeviceSyncWorker
 
 @Composable
 fun SettingsScreen(
@@ -323,9 +325,11 @@ fun ServerConfigSection(
 
 @Composable
 fun SyncSection() {
+    val context = LocalContext.current
     var bgSync by remember { mutableStateOf(true) }
     var wifiOnly by remember { mutableStateOf(true) }
-    var selectedInterval by remember { mutableStateOf("30m") }
+    var selectedInterval by remember { mutableStateOf("6h") }
+    var syncTriggered by remember { mutableStateOf(false) }
 
     GlassCard(modifier = Modifier.fillMaxWidth()) {
         Column {
@@ -335,7 +339,11 @@ fun SyncSection() {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text("Background Sync", fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                Switch(checked = bgSync, onCheckedChange = { bgSync = it }, colors = SwitchDefaults.colors(checkedTrackColor = MintGreen))
+                Switch(checked = bgSync, onCheckedChange = {
+                    bgSync = it
+                    if (it) DeviceSyncWorker.schedule(context)
+                    else DeviceSyncWorker.cancel(context)
+                }, colors = SwitchDefaults.colors(checkedTrackColor = MintGreen))
             }
             Spacer(modifier = Modifier.height(8.dp))
             Row(
@@ -350,7 +358,7 @@ fun SyncSection() {
             Text("Sync Interval", fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("15m", "30m", "1h").forEach { interval ->
+                listOf("1h", "6h", "12h").forEach { interval ->
                     val isSelected = selectedInterval == interval
                     Box(
                         modifier = Modifier
@@ -370,6 +378,21 @@ fun SyncSection() {
                         )
                     }
                 }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            // Sync Now button
+            Button(
+                onClick = {
+                    DeviceSyncWorker.syncNow(context)
+                    syncTriggered = true
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = PillShape,
+                colors = ButtonDefaults.buttonColors(containerColor = MintGreen)
+            ) {
+                Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(if (syncTriggered) "Sync Queued ✓" else "Sync Now", fontWeight = FontWeight.Bold)
             }
         }
     }

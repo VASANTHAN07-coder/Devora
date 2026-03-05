@@ -12,12 +12,16 @@ import com.enterprise.devicemanager.ui.theme.ThemeViewModel
 import com.enterprise.devicemanager.ui.screens.dashboard.DashboardScreen
 import com.enterprise.devicemanager.ui.screens.splash.SplashScreen
 import com.enterprise.devicemanager.ui.screens.login.LoginScreen
+import com.enterprise.devicemanager.worker.DeviceSyncWorker
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         val repository = ThemeRepository(applicationContext)
+
+        // Schedule periodic background sync (every 6 hours)
+        DeviceSyncWorker.schedule(applicationContext)
         
         enableEdgeToEdge()
         setContent {
