@@ -23,10 +23,13 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.enterprise.devicemanager.data.model.DashboardStats
+import com.enterprise.devicemanager.data.repository.DeviceRepository
 import com.enterprise.devicemanager.ui.components.GlassCard
 import com.enterprise.devicemanager.ui.theme.MintGreen
 import com.enterprise.devicemanager.ui.theme.LightBackgroundGradient
@@ -34,6 +37,8 @@ import com.enterprise.devicemanager.ui.theme.DarkBackgroundGradient
 import com.enterprise.devicemanager.ui.screens.devices.DevicesScreen
 import com.enterprise.devicemanager.ui.screens.enrollment.EnrollmentScreen
 import com.enterprise.devicemanager.ui.screens.settings.SettingsScreen
+import com.enterprise.devicemanager.ui.screens.appinventory.AppInventoryScreen
+import kotlinx.coroutines.launch
 
 data class ActivityItem(
     val icon: ImageVector,
@@ -68,7 +73,8 @@ fun DashboardScreen(
                 0 -> MainDashboardContent(isDark, onThemeToggle)
                 1 -> DevicesScreen(isDark)
                 2 -> EnrollmentScreen(isDark)
-                3 -> SettingsScreen(isDark, onThemeToggle, onLogout)
+                3 -> AppInventoryScreen(isDark)
+                4 -> SettingsScreen(isDark, onThemeToggle, onLogout)
             }
         }
     }
@@ -76,11 +82,30 @@ fun DashboardScreen(
 
 @Composable
 fun MainDashboardContent(isDark: Boolean, onThemeToggle: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val repo = remember { DeviceRepository(context) }
+
+    var stats by remember { mutableStateOf<DashboardStats?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    // Fetch dashboard stats from backend
+    LaunchedEffect(Unit) {
+        scope.launch {
+            isLoading = true
+            val result = repo.fetchDashboardStats()
+            result.onSuccess { stats = it }
+                .onFailure { errorMessage = it.localizedMessage }
+            isLoading = false
+        }
+    }
+
     val activities = remember {
         listOf(
-            ActivityItem(Icons.Default.Sync, "Device 'MacBook Pro' synchronized", "2m ago", MintGreen),
-            ActivityItem(Icons.Default.Lock, "Remote lock applied to 'Pixel 8'", "15m ago", Color.Gray),
-            ActivityItem(Icons.Default.Warning, "Security violation: 'Admin-Tablet'", "1h ago", Color.Red),
+            ActivityItem(Icons.Default.Sync, "Device synchronized", "2m ago", MintGreen),
+            ActivityItem(Icons.Default.Lock, "Remote lock applied", "15m ago", Color.Gray),
+            ActivityItem(Icons.Default.Warning, "Security violation detected", "1h ago", Color.Red),
             ActivityItem(Icons.Default.CheckCircle, "New device enrollment complete", "3h ago", MintGreen)
         )
     }
@@ -93,8 +118,33 @@ fun MainDashboardContent(isDark: Boolean, onThemeToggle: () -> Unit) {
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            item { StatsRow() }
-            item { DeviceHealthCard() }
+            item { 
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(110.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = MintGreen)
+                    }
+                } else {
+                    StatsRow(stats)
+                }
+            }
+            item { DeviceHealthCard(stats) }
+
+            // Error message if backend unreachable
+            errorMessage?.let { msg ->
+                item {
+                    GlassCard(modifier = Modifier.fillMaxWidth()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.CloudOff, contentDescription = null, tint = Color.Red, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Offline mode: $msg", fontSize = 12.sp, color = Color.Gray)
+                        }
+                    }
+                }
+            }
+
             item { RecentActivityHeader() }
             items(activities) { item ->
                 ActivityRow(item)
@@ -140,15 +190,20 @@ fun DashboardTopBar(isDark: Boolean, onThemeToggle: () -> Unit) {
 }
 
 @Composable
-fun StatsRow() {
+fun StatsRow(stats: DashboardStats?) {
+    val total = stats?.totalDevices?.toString() ?: "--"
+    val active = stats?.activeDevices?.toString() ?: "--"
+    val inactive = stats?.inactiveDevices?.toString() ?: "--"
+    val apps = stats?.totalApps?.toString() ?: "--"
+
     Row(
         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        StatCard("24", "Total Devices", Icons.Default.Laptop, MintGreen)
-        StatCard("18", "Active Now", Icons.Default.Circle, MintGreen, isAnimated = true)
-        StatCard("3", "Violations", Icons.Default.Warning, Color.Red)
-        StatCard("5", "Pending", Icons.Default.Schedule, Color(0xFFFFB347))
+        StatCard(total, "Total Devices", Icons.Default.Laptop, MintGreen)
+        StatCard(active, "Active Now", Icons.Default.Circle, MintGreen, isAnimated = true)
+        StatCard(inactive, "Inactive", Icons.Default.Warning, Color.Red)
+        StatCard(apps, "Total Apps", Icons.Default.Apps, Color(0xFFFFB347))
     }
 }
 
@@ -177,19 +232,24 @@ fun StatCard(value: String, label: String, icon: ImageVector, iconColor: Color, 
 }
 
 @Composable
-fun DeviceHealthCard() {
+fun DeviceHealthCard(stats: DashboardStats?) {
+    val total = stats?.totalDevices ?: 0L
+    val active = stats?.activeDevices ?: 0L
+    val onlinePct = if (total > 0) (active.toFloat() / total) else 0f
+    val offlinePct = if (total > 0) 1f - onlinePct else 0f
+
     Column {
         Text(text = "Device Health Overview", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 12.dp))
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(4.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    HealthLabel("Online", "75%", MintGreen)
-                    HealthLabel("Offline", "25%", Color.Gray)
+                    HealthLabel("Online", "${(onlinePct * 100).toInt()}%", MintGreen)
+                    HealthLabel("Offline", "${(offlinePct * 100).toInt()}%", Color.Gray)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Canvas(modifier = Modifier.fillMaxWidth().height(12.dp).clip(CircleShape)) {
                     drawRect(color = Color.LightGray.copy(alpha = 0.3f), size = size)
-                    drawRect(color = MintGreen, size = size.copy(width = size.width * 0.75f))
+                    drawRect(color = MintGreen, size = size.copy(width = size.width * onlinePct))
                 }
             }
         }
@@ -239,6 +299,7 @@ fun DashboardBottomBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
             Triple("Dashboard", Icons.Default.Dashboard, Icons.Outlined.Dashboard),
             Triple("Devices", Icons.Default.Devices, Icons.Outlined.Devices),
             Triple("Enroll", Icons.Default.AddBox, Icons.Outlined.AddBox),
+            Triple("Apps", Icons.Default.Apps, Icons.Outlined.Apps),
             Triple("Settings", Icons.Default.Settings, Icons.Outlined.Settings)
         )
         items.forEachIndexed { index, (label, sel, unsel) ->

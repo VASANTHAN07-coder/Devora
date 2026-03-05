@@ -12,6 +12,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,48 +23,47 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.enterprise.devicemanager.data.model.DeviceResponse
+import com.enterprise.devicemanager.data.repository.DeviceRepository
 import com.enterprise.devicemanager.ui.components.GlassCard
 import com.enterprise.devicemanager.ui.theme.MintGradient
 import com.enterprise.devicemanager.ui.theme.MintGreen
 import com.enterprise.devicemanager.ui.theme.PillShape
-
-data class DeviceItem(
-    val name: String,
-    val model: String,
-    val manufacturer: String,
-    val status: String,
-    val isOnline: Boolean,
-    val androidVersion: String,
-    val lastSeen: String
-)
+import kotlinx.coroutines.launch
 
 @Composable
 fun DeviceListScreen(isDark: Boolean) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val repo = remember { DeviceRepository(context) }
+
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("All") }
+    var devices by remember { mutableStateOf<List<DeviceResponse>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val mockDevices = remember {
-        listOf(
-            DeviceItem("Admin-MBP", "MacBook Pro M3", "Apple", "Online", true, "14.2", "2 mins ago"),
-            DeviceItem("Pixel-8-Pro", "Pixel 8 Pro", "Google", "Online", true, "14.0", "5 mins ago"),
-            DeviceItem("Manager-Tablet", "iPad Air 5", "Apple", "Offline", false, "17.1", "1 hour ago"),
-            DeviceItem("Sales-Phone-01", "S23 Ultra", "Samsung", "Online", true, "13.0", "10 mins ago"),
-            DeviceItem("Warehouse-Scanner", "TC52X", "Zebra", "Flagged", false, "11.0", "2 hours ago"),
-            DeviceItem("Exec-Laptop", "XPS 13", "Dell", "Online", true, "11", "Just now"),
-            DeviceItem("HR-Phone", "iPhone 15", "Apple", "Offline", false, "17.0", "5 hours ago"),
-            DeviceItem("Dev-Tablet", "Galaxy Tab S9", "Samsung", "Online", true, "14", "1 min ago")
-        )
+    // Fetch devices from backend
+    LaunchedEffect(Unit) {
+        scope.launch {
+            isLoading = true
+            val result = repo.fetchAllDevices()
+            result.onSuccess { devices = it }
+                .onFailure { errorMessage = it.localizedMessage }
+            isLoading = false
+        }
     }
 
-    val filteredDevices = mockDevices.filter {
-        val matchesSearch = it.name.contains(searchQuery, ignoreCase = true) || it.model.contains(searchQuery, ignoreCase = true)
+    val filteredDevices = devices.filter {
+        val matchesSearch = it.deviceId.contains(searchQuery, ignoreCase = true) ||
+                (it.enrollmentMethod ?: "").contains(searchQuery, ignoreCase = true)
         val matchesFilter = when (selectedFilter) {
-            "Active" -> it.isOnline
-            "Offline" -> !it.isOnline
-            "Flagged" -> it.status == "Flagged"
+            "Active" -> it.status == "ACTIVE"
+            "Inactive" -> it.status != "ACTIVE"
             else -> true
         }
         matchesSearch && matchesFilter
@@ -76,6 +77,34 @@ fun DeviceListScreen(isDark: Boolean) {
         ) {
             Spacer(modifier = Modifier.height(16.dp))
             
+            // Header with refresh
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Devices (${devices.size})",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                IconButton(onClick = {
+                    scope.launch {
+                        isLoading = true
+                        errorMessage = null
+                        repo.fetchAllDevices()
+                            .onSuccess { devices = it }
+                            .onFailure { errorMessage = it.localizedMessage }
+                        isLoading = false
+                    }
+                }) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = MintGreen)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            
             // Search Bar
             SearchBar(searchQuery, onQueryChange = { searchQuery = it }, isDark = isDark)
             
@@ -85,8 +114,24 @@ fun DeviceListScreen(isDark: Boolean) {
             FilterChips(selectedFilter, onFilterSelected = { selectedFilter = it }, isDark = isDark)
             
             Spacer(modifier = Modifier.height(24.dp))
+
+            // Error message
+            errorMessage?.let { msg ->
+                GlassCard(modifier = Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CloudOff, contentDescription = null, tint = Color.Red, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Cannot reach server: $msg", fontSize = 12.sp, color = Color.Gray)
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
             
-            if (filteredDevices.isEmpty()) {
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = MintGreen)
+                }
+            } else if (filteredDevices.isEmpty()) {
                 EmptyState()
             } else {
                 LazyColumn(
@@ -129,7 +174,7 @@ fun SearchBar(query: String, onQueryChange: (String) -> Unit, isDark: Boolean) {
 
 @Composable
 fun FilterChips(selected: String, onFilterSelected: (String) -> Unit, isDark: Boolean) {
-    val filters = listOf("All", "Active", "Offline", "Flagged")
+    val filters = listOf("All", "Active", "Inactive")
     val gradient = MintGradient
     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(filters) { filter ->
@@ -159,7 +204,8 @@ fun FilterChips(selected: String, onFilterSelected: (String) -> Unit, isDark: Bo
 }
 
 @Composable
-fun DeviceListCard(device: DeviceItem, isDark: Boolean) {
+fun DeviceListCard(device: DeviceResponse, isDark: Boolean) {
+    val isActive = device.status == "ACTIVE"
     GlassCard(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Initial Circle
@@ -171,10 +217,10 @@ fun DeviceListCard(device: DeviceItem, isDark: Boolean) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = device.name.first().toString(),
+                    text = device.deviceId.take(2).uppercase(),
                     color = MintGreen,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
+                    fontSize = 14.sp
                 )
             }
             
@@ -183,18 +229,19 @@ fun DeviceListCard(device: DeviceItem, isDark: Boolean) {
             // Center Info
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = device.name,
-                    fontSize = 15.sp,
+                    text = device.deviceId,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
+                    maxLines = 1,
                     color = if (isDark) Color.White else Color(0xFF1A2332)
                 )
                 Text(
-                    text = "${device.model} • ${device.manufacturer}",
+                    text = "Method: ${device.enrollmentMethod ?: "Unknown"}",
                     fontSize = 12.sp,
                     color = Color(0xFF8A9BB0)
                 )
                 Text(
-                    text = "Last seen ${device.lastSeen}",
+                    text = "Enrolled: ${device.enrolledAt?.take(10) ?: "Unknown"}",
                     fontSize = 11.sp,
                     color = Color(0xFF8A9BB0).copy(alpha = 0.7f)
                 )
@@ -203,9 +250,9 @@ fun DeviceListCard(device: DeviceItem, isDark: Boolean) {
             // Right Side
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = if (device.isOnline) "● Online" else "● Offline",
+                    text = if (isActive) "● Active" else "● Inactive",
                     fontSize = 11.sp,
-                    color = if (device.isOnline) MintGreen else Color.Gray,
+                    color = if (isActive) MintGreen else Color.Gray,
                     fontWeight = FontWeight.Medium
                 )
                 
@@ -217,7 +264,7 @@ fun DeviceListCard(device: DeviceItem, isDark: Boolean) {
                     modifier = Modifier.padding(vertical = 2.dp)
                 ) {
                     Text(
-                        text = "Android ${device.androidVersion}",
+                        text = device.status,
                         fontSize = 10.sp,
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
                         color = if (isDark) Color.LightGray else Color.Gray
