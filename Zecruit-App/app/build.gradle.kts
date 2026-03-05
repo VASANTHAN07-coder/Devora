@@ -63,6 +63,7 @@ dependencies {
     // Networking
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
+    implementation(libs.okhttp.logging)
 
     // Utilities
     implementation(libs.androidx.work.runtime.ktx)
