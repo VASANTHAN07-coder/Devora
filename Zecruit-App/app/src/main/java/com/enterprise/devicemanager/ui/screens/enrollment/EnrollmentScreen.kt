@@ -1,5 +1,8 @@
 package com.enterprise.devicemanager.ui.screens.enrollment
 
+import android.content.Context
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,19 +19,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.enterprise.devicemanager.admin.DeviceOwnerHelper
+import com.enterprise.devicemanager.data.model.EnrollRequest
+import com.enterprise.devicemanager.data.network.RetrofitClient
 import com.enterprise.devicemanager.ui.components.GlassCard
 import com.enterprise.devicemanager.ui.components.MintGradientButton
 import com.enterprise.devicemanager.ui.screens.login.LoginTextField
 import com.enterprise.devicemanager.ui.theme.MintGreen
 import com.enterprise.devicemanager.ui.theme.PillShape
+import kotlinx.coroutines.launch
+import java.util.UUID
 
 @Composable
 fun EnrollmentScreen(isDark: Boolean) {
     var selectedTab by remember { mutableStateOf(0) } // 0 = QR, 1 = Manual
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -42,6 +52,25 @@ fun EnrollmentScreen(isDark: Boolean) {
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )
+
+        // Device Owner Status
+        val ownerStatus = remember { DeviceOwnerHelper.getDeviceOwnerStatus(context) }
+        GlassCard(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Security,
+                    contentDescription = null,
+                    tint = if (DeviceOwnerHelper.isDeviceOwner(context)) MintGreen else Color.Gray,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text("Provisioning Status", fontSize = 12.sp, color = Color.Gray)
+                    Text(ownerStatus, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(20.dp))
 
         // Segmented Tab Selector
@@ -111,6 +140,10 @@ fun EnrollmentTabItem(
 
 @Composable
 fun QrEnrollmentContent(isDark: Boolean) {
+    val provisioningJson = remember {
+        DeviceOwnerHelper.getProvisioningQrJson()
+    }
+
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
@@ -142,12 +175,23 @@ fun QrEnrollmentContent(isDark: Boolean) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Info, contentDescription = null, tint = MintGreen)
                 Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Point your camera at the enrollment QR code provided by your organization.",
-                    fontSize = 13.sp,
-                    color = Color.Gray,
-                    lineHeight = 18.sp
-                )
+                Column {
+                    Text(
+                        text = "QR Code Provisioning",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "1. Factory reset the target device\n" +
+                                "2. Tap 6 times on the welcome screen\n" +
+                                "3. Connect to WiFi\n" +
+                                "4. Scan the enrollment QR code",
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        lineHeight = 18.sp
+                    )
+                }
             }
         }
         
@@ -178,8 +222,22 @@ fun QrEnrollmentContent(isDark: Boolean) {
 
 @Composable
 fun ManualEnrollmentContent(isDark: Boolean) {
-    var enrollmentId by remember { mutableStateOf("") }
-    var orgCode by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    var enrollmentToken by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var resultMessage by remember { mutableStateOf<String?>(null) }
+    var isSuccess by remember { mutableStateOf(false) }
+
+    // Auto-generate device ID from Android ID
+    val deviceId = remember {
+        val androidId = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ANDROID_ID
+        ) ?: UUID.randomUUID().toString()
+        "EDM-$androidId"
+    }
 
     Column {
         Text(
@@ -189,30 +247,75 @@ fun ManualEnrollmentContent(isDark: Boolean) {
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
-        LoginTextField(
-            value = enrollmentId,
-            onValueChange = { enrollmentId = it },
-            placeholder = "Enrollment ID",
-            icon = Icons.Default.Fingerprint,
-            isDark = isDark
-        )
+        // Device ID (auto-generated, read-only display)
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Column {
+                Text("Device ID (auto-generated)", fontSize = 12.sp, color = Color.Gray)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(deviceId, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         LoginTextField(
-            value = orgCode,
-            onValueChange = { orgCode = it },
-            placeholder = "Organization Code",
-            icon = Icons.Default.Business,
+            value = enrollmentToken,
+            onValueChange = { enrollmentToken = it },
+            placeholder = "Enrollment Token (optional)",
+            icon = Icons.Default.Fingerprint,
             isDark = isDark
         )
 
         Spacer(modifier = Modifier.height(32.dp))
 
         MintGradientButton(
-            text = "Proceed to Enroll",
-            onClick = { /* TODO */ }
+            text = if (isLoading) "Enrolling..." else "Enroll Device",
+            isLoading = isLoading,
+            onClick = {
+                scope.launch {
+                    isLoading = true
+                    resultMessage = null
+                    try {
+                        val request = EnrollRequest(
+                            deviceId = deviceId,
+                            enrollmentToken = enrollmentToken.ifBlank { null },
+                            enrollmentMethod = if (enrollmentToken.isNotBlank()) "TOKEN" else "MANUAL"
+                        )
+                        val response = RetrofitClient.apiService.enrollDevice(request)
+                        if (response.isSuccessful) {
+                            val body = response.body()
+                            isSuccess = true
+                            resultMessage = "Enrolled successfully! Status: ${body?.status}"
+                        } else {
+                            isSuccess = false
+                            resultMessage = "Enrollment failed: ${response.code()} ${response.message()}"
+                        }
+                    } catch (e: Exception) {
+                        isSuccess = false
+                        resultMessage = "Network error: ${e.localizedMessage}"
+                    } finally {
+                        isLoading = false
+                    }
+                }
+            }
         )
+
+        // Result feedback
+        resultMessage?.let { msg ->
+            Spacer(modifier = Modifier.height(16.dp))
+            GlassCard(modifier = Modifier.fillMaxWidth(), showAccent = true) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        if (isSuccess) Icons.Default.CheckCircle else Icons.Default.Error,
+                        contentDescription = null,
+                        tint = if (isSuccess) MintGreen else Color.Red,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(msg, fontSize = 13.sp)
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
