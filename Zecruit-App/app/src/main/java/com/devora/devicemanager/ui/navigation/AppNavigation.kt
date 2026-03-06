@@ -1,24 +1,30 @@
 package com.devora.devicemanager.ui.navigation
 
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavBackStackEntry
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.devora.devicemanager.ui.screens.dashboard.DashboardScreen
 import com.devora.devicemanager.ui.screens.devices.DeviceListScreen
+import com.devora.devicemanager.ui.screens.employee.EmployeeRegisterScreen
+import com.devora.devicemanager.ui.screens.employeedashboard.EmployeeDashboardScreen
 import com.devora.devicemanager.ui.screens.enrollment.AdminGenerateEnrollmentScreen
 import com.devora.devicemanager.ui.screens.enrollment.EmployeeEnrollmentScreen
-import com.devora.devicemanager.ui.screens.employee.EmployeeRegisterScreen
 import com.devora.devicemanager.ui.screens.login.LoginScreen
 import com.devora.devicemanager.ui.screens.settings.SettingsScreen
 import com.devora.devicemanager.ui.screens.splash.SplashScreen
+import com.devora.devicemanager.ui.viewmodel.AuthViewModel
 
 @Composable
 fun AppNavigation(
@@ -26,7 +32,9 @@ fun AppNavigation(
     onThemeToggle: () -> Unit
 ) {
     val navController = rememberNavController()
+    val authViewModel: AuthViewModel = viewModel()
 
+    // Bottom nav helper — preserves back stack state for tab switching
     val navigateTo: (String) -> Unit = { route ->
         if (navController.currentDestination?.route != route) {
             navController.navigate(route) {
@@ -41,13 +49,25 @@ fun AppNavigation(
 
     NavHost(
         navController = navController,
-        startDestination = "splash"
+        startDestination = "splash",
+        enterTransition = {
+            fadeIn(tween(300)) + slideInHorizontally(tween(300)) { it / 4 }
+        },
+        exitTransition = {
+            fadeOut(tween(300)) + slideOutHorizontally(tween(300)) { -it / 4 }
+        },
+        popEnterTransition = {
+            fadeIn(tween(300)) + slideInHorizontally(tween(300)) { -it / 4 }
+        },
+        popExitTransition = {
+            fadeOut(tween(300)) + slideOutHorizontally(tween(300)) { it / 4 }
+        }
     ) {
-        // Splash → Login: fadeIn/fadeOut 500ms
-        composable(
-            route = "splash",
-            exitTransition = { fadeOut(animationSpec = tween(500)) }
-        ) {
+
+        // ═══════════════════════════════════
+        // SPLASH
+        // ═══════════════════════════════════
+        composable("splash") {
             SplashScreen(
                 onSplashFinished = {
                     navController.navigate("login") {
@@ -57,16 +77,16 @@ fun AppNavigation(
             )
         }
 
-        // Login → Dashboard: fadeIn 600ms
-        composable(
-            route = "login",
-            enterTransition = { fadeIn(animationSpec = tween(500)) },
-            exitTransition = { fadeOut(animationSpec = tween(600)) }
-        ) {
+        // ═══════════════════════════════════
+        // LOGIN
+        // ═══════════════════════════════════
+        composable("login") {
             LoginScreen(
                 onLoginSuccess = {
+                    authViewModel.loginAdmin()
                     navController.navigate("dashboard") {
                         popUpTo("login") { inclusive = true }
+                        launchSingleTop = true
                     }
                 },
                 onEmployeeRegister = {
@@ -80,14 +100,10 @@ fun AppNavigation(
             )
         }
 
-        // Employee Registration
-        composable(
-            route = "employee_register",
-            enterTransition = { slideInFromRight() },
-            exitTransition = { slideOutToLeft() },
-            popEnterTransition = { slideInFromLeft() },
-            popExitTransition = { slideOutToRight() }
-        ) {
+        // ═══════════════════════════════════
+        // EMPLOYEE REGISTRATION
+        // ═══════════════════════════════════
+        composable("employee_register") {
             EmployeeRegisterScreen(
                 onBack = { navController.popBackStack() },
                 onRegistrationSuccess = {
@@ -99,14 +115,12 @@ fun AppNavigation(
             )
         }
 
-        // Dashboard
-        composable(
-            route = "dashboard",
-            enterTransition = { fadeIn(animationSpec = tween(600)) },
-            exitTransition = { slideOutToLeft() },
-            popEnterTransition = { slideInFromLeft() },
-            popExitTransition = { slideOutToRight() }
-        ) {
+        // ═══════════════════════════════════
+        // ADMIN ROUTES
+        // ═══════════════════════════════════
+
+        // Dashboard (admin home)
+        composable("dashboard") {
             DashboardScreen(
                 onNavigate = navigateTo,
                 isDark = isDark,
@@ -115,111 +129,103 @@ fun AppNavigation(
         }
 
         // Device List
-        composable(
-            route = "device_list",
-            enterTransition = { slideInFromRight() },
-            exitTransition = { slideOutToLeft() },
-            popEnterTransition = { slideInFromLeft() },
-            popExitTransition = { slideOutToRight() }
-        ) {
+        composable("device_list") {
             DeviceListScreen(
                 onDeviceClick = { deviceName ->
-                    // Device detail navigation placeholder
+                    navController.navigate("device_detail/$deviceName")
                 },
                 onEnrollClick = {
-                    navController.navigate("enrollment")
+                    navController.navigate("admin_generate_enrollment")
                 },
                 onNavigate = navigateTo,
                 isDark = isDark
             )
         }
 
-        // Admin Enrollment (Generate QR/Token)
-        composable(
-            route = "enrollment",
-            enterTransition = { slideInFromRight() },
-            exitTransition = { slideOutToLeft() },
-            popEnterTransition = { slideInFromLeft() },
-            popExitTransition = { slideOutToRight() }
-        ) {
-            AdminGenerateEnrollmentScreen(
-                onBack = {
-                    navController.navigate("dashboard") {
-                        popUpTo("dashboard") { inclusive = true }
-                    }
-                },
+        // Device Detail
+        composable("device_detail/{deviceId}") { backStackEntry ->
+            val deviceId = backStackEntry.arguments?.getString("deviceId") ?: ""
+            // DeviceDetailScreen placeholder — will be created in File 4
+            // For now, navigate back
+            DeviceDetailPlaceholder(
+                deviceId = deviceId,
+                onBack = { navController.popBackStack() },
                 isDark = isDark
             )
         }
 
+        // Admin Generate Enrollment (QR/Token)
+        composable("admin_generate_enrollment") {
+            AdminGenerateEnrollmentScreen(
+                onBack = { navController.popBackStack() },
+                isDark = isDark
+            )
+        }
+
+        // Settings
+        composable("settings") {
+            SettingsScreen(
+                isDark = isDark,
+                onThemeToggle = onThemeToggle,
+                onSignOut = {
+                    authViewModel.signOut()
+                    navController.navigate("login") {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+                onNavigate = navigateTo
+            )
+        }
+
+        // ═══════════════════════════════════
+        // EMPLOYEE ROUTES
+        // ═══════════════════════════════════
+
         // Employee Enrollment (QR Scan / Token Input)
-        composable(
-            route = "employee_enrollment",
-            enterTransition = { slideInFromRight() },
-            exitTransition = { slideOutToLeft() },
-            popEnterTransition = { slideInFromLeft() },
-            popExitTransition = { slideOutToRight() }
-        ) {
+        composable("employee_enrollment") {
             EmployeeEnrollmentScreen(
                 onEnrollSuccess = {
-                    navController.navigate("dashboard") {
-                        popUpTo(0) { inclusive = true }
+                    authViewModel.loginEmployee()
+                    navController.navigate("employee_dashboard") {
+                        popUpTo("login") { inclusive = true }
+                        launchSingleTop = true
                     }
                 },
                 onBack = { navController.popBackStack() }
             )
         }
 
-        // Settings
-        composable(
-            route = "settings",
-            enterTransition = { slideInFromRight() },
-            exitTransition = { slideOutToLeft() },
-            popEnterTransition = { slideInFromLeft() },
-            popExitTransition = { slideOutToRight() }
-        ) {
-            SettingsScreen(
-                isDark = isDark,
-                onThemeToggle = onThemeToggle,
+        // Employee Dashboard (post-enrollment home)
+        composable("employee_dashboard") {
+            EmployeeDashboardScreen(
                 onSignOut = {
+                    authViewModel.signOut()
                     navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
+                        popUpTo(navController.graph.id) { inclusive = true }
+                        launchSingleTop = true
                     }
                 },
-                onNavigate = navigateTo
+                isDark = isDark,
+                onThemeToggle = onThemeToggle
             )
         }
     }
 }
 
 // ══════════════════════════════════════
-// TRANSITION HELPERS
+// PLACEHOLDER — removed when DeviceDetailScreen is created
 // ══════════════════════════════════════
-
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.slideInFromRight(): EnterTransition {
-    return slideIntoContainer(
-        towards = AnimatedContentTransitionScope.SlideDirection.Left,
-        animationSpec = tween(300)
-    )
-}
-
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.slideInFromLeft(): EnterTransition {
-    return slideIntoContainer(
-        towards = AnimatedContentTransitionScope.SlideDirection.Right,
-        animationSpec = tween(300)
-    )
-}
-
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.slideOutToLeft(): ExitTransition {
-    return slideOutOfContainer(
-        towards = AnimatedContentTransitionScope.SlideDirection.Left,
-        animationSpec = tween(300)
-    )
-}
-
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.slideOutToRight(): ExitTransition {
-    return slideOutOfContainer(
-        towards = AnimatedContentTransitionScope.SlideDirection.Right,
-        animationSpec = tween(300)
-    )
+@Composable
+private fun DeviceDetailPlaceholder(
+    deviceId: String,
+    onBack: () -> Unit,
+    isDark: Boolean
+) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text("Device: $deviceId\n(Detail screen coming soon)")
+    }
 }

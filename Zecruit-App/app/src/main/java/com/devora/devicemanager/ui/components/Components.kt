@@ -347,7 +347,7 @@ data class BottomNavItem(
 val bottomNavItems = listOf(
     BottomNavItem("Dashboard", Icons.Filled.Dashboard, "dashboard"),
     BottomNavItem("Devices", Icons.Filled.PhoneAndroid, "device_list"),
-    BottomNavItem("Enroll", Icons.Filled.QrCodeScanner, "enrollment"),
+    BottomNavItem("Enroll", Icons.Filled.QrCodeScanner, "admin_generate_enrollment"),
     BottomNavItem("Settings", Icons.Filled.Settings, "settings")
 )
 

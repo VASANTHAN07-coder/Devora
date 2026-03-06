@@ -39,6 +39,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -93,6 +94,13 @@ fun LoginScreen(
     var isLoading by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    // Reset fields when LoginScreen reappears (e.g., after sign out)
+    LaunchedEffect(Unit) {
+        adminId = ""
+        password = ""
+        showPassword = false
+    }
 
     val bgColor = if (isDark) DarkBgBase else Color(0xFFF5F3FF)
     val cardBg = if (isDark) DarkBgSurface else BgSurface
@@ -401,9 +409,9 @@ fun LoginScreen(
                                     ) {
                                         Icon(
                                             imageVector = if (showPassword) {
-                                                Icons.Filled.VisibilityOff
-                                            } else {
                                                 Icons.Filled.Visibility
+                                            } else {
+                                                Icons.Filled.VisibilityOff
                                             },
                                             contentDescription = "Toggle password visibility",
                                             tint = PurpleCore,
