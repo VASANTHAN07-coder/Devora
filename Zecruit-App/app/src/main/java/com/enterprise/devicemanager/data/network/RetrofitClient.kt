@@ -1,6 +1,6 @@
 package com.enterprise.devicemanager.data.network
 
-import android.util.Base64
+import android.util.Base643....
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
