@@ -1,6 +1,8 @@
 package com.devora.devicemanager.ui.screens.dashboard
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DarkMode
@@ -25,7 +28,12 @@ import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Divider
+import androidx.compose.material.icons.outlined.Assessment
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -34,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
@@ -54,8 +63,10 @@ import com.devora.devicemanager.ui.theme.DarkBgBase
 import com.devora.devicemanager.ui.theme.JetBrainsMono
 import com.devora.devicemanager.ui.theme.PlusJakartaSans
 import com.devora.devicemanager.ui.theme.PurpleBright
+import com.devora.devicemanager.ui.theme.PurpleBorder
 import com.devora.devicemanager.ui.theme.PurpleCore
 import com.devora.devicemanager.ui.theme.PurpleDeep
+import com.devora.devicemanager.ui.theme.PurpleDim
 import com.devora.devicemanager.ui.theme.Success
 import com.devora.devicemanager.ui.theme.TextMuted
 import com.devora.devicemanager.ui.theme.TextPrimary
@@ -292,6 +303,87 @@ fun DashboardScreen(
 
             item { Spacer(modifier = Modifier.height(16.dp)) }
 
+            // QUICK ACTIONS
+            item {
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    SectionHeader(
+                        title = "QUICK ACTIONS",
+                        isDark = isDark
+                    )
+                }
+            }
+
+            item {
+                data class QuickAction(
+                    val label: String,
+                    val icon: ImageVector,
+                    val color: Color,
+                    val route: String
+                )
+
+                val quickActions = listOf(
+                    QuickAction("Enroll\nDevice", Icons.Outlined.PersonAdd, PurpleCore, "admin_generate_enrollment"),
+                    QuickAction("Lock\nAll", Icons.Outlined.Lock, WarningColor, ""),
+                    QuickAction("Sync\nAll", Icons.Outlined.Sync, Success, ""),
+                    QuickAction("View\nReports", Icons.Outlined.Assessment, PurpleBright, ""),
+                    QuickAction("Policies", Icons.Outlined.Security, PurpleDeep, "")
+                )
+
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(quickActions) { action ->
+                        Column(
+                            modifier = Modifier
+                                .width(80.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(PurpleDim)
+                                .border(1.dp, PurpleBorder, RoundedCornerShape(16.dp))
+                                .clickable {
+                                    if (action.route.isNotEmpty()) onNavigate(action.route)
+                                }
+                                .padding(vertical = 16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .background(
+                                        action.color.copy(alpha = 0.12f),
+                                        CircleShape
+                                    )
+                                    .border(
+                                        1.dp,
+                                        action.color.copy(alpha = 0.25f),
+                                        CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    action.icon,
+                                    contentDescription = action.label,
+                                    tint = action.color,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = action.label,
+                                fontFamily = DMSans,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 11.sp,
+                                color = textColor,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                lineHeight = 14.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            item { Spacer(modifier = Modifier.height(16.dp)) }
+
             // DEVICE HEALTH
             item {
                 Box(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -442,7 +534,7 @@ fun DashboardScreen(
                                 }
 
                                 if (index < recentActivities.size - 1) {
-                                    Divider(
+                                    HorizontalDivider(
                                         thickness = 1.dp,
                                         color = if (isDark) {
                                             PurpleCore.copy(alpha = 0.10f)
