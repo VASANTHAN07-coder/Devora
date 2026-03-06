@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.enterprise.devicemanager"
+    namespace = "com.devora.devicemanager"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.enterprise.devicemanager"
+        applicationId = "com.devora.devicemanager"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -56,6 +56,9 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.material.icons.extended)
+
+    // Google Fonts
+    implementation(libs.androidx.ui.text.google.fonts)
 
     // Material Components
     implementation(libs.material)

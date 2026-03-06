@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "DeviceManager"
+rootProject.name = "Devora"
 include(":app")
