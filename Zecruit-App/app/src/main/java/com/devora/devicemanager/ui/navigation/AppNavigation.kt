@@ -166,8 +166,7 @@ fun AppNavigation(
                 onSignOut = {
                     authViewModel.signOut()
                     navController.navigate("login") {
-                        popUpTo("splash") { inclusive = true }
-                        launchSingleTop = true
+                        popUpTo(0)
                     }
                 },
                 onNavigate = navigateTo
