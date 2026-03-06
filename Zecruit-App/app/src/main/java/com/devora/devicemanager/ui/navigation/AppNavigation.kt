@@ -13,7 +13,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.devora.devicemanager.ui.screens.dashboard.DashboardScreen
 import com.devora.devicemanager.ui.screens.devices.DeviceListScreen
-import com.devora.devicemanager.ui.screens.enrollment.EnrollmentScreen
+import com.devora.devicemanager.ui.screens.enrollment.AdminGenerateEnrollmentScreen
+import com.devora.devicemanager.ui.screens.enrollment.EmployeeEnrollmentScreen
+import com.devora.devicemanager.ui.screens.employee.EmployeeRegisterScreen
 import com.devora.devicemanager.ui.screens.login.LoginScreen
 import com.devora.devicemanager.ui.screens.settings.SettingsScreen
 import com.devora.devicemanager.ui.screens.splash.SplashScreen
@@ -67,8 +69,33 @@ fun AppNavigation(
                         popUpTo("login") { inclusive = true }
                     }
                 },
+                onEmployeeRegister = {
+                    navController.navigate("employee_register")
+                },
+                onEmployeeEnroll = {
+                    navController.navigate("employee_enrollment")
+                },
                 isDark = isDark,
                 onThemeToggle = onThemeToggle
+            )
+        }
+
+        // Employee Registration
+        composable(
+            route = "employee_register",
+            enterTransition = { slideInFromRight() },
+            exitTransition = { slideOutToLeft() },
+            popEnterTransition = { slideInFromLeft() },
+            popExitTransition = { slideOutToRight() }
+        ) {
+            EmployeeRegisterScreen(
+                onBack = { navController.popBackStack() },
+                onRegistrationSuccess = {
+                    navController.navigate("login") {
+                        popUpTo("employee_register") { inclusive = true }
+                    }
+                },
+                isDark = isDark
             )
         }
 
@@ -107,7 +134,7 @@ fun AppNavigation(
             )
         }
 
-        // Enrollment
+        // Admin Enrollment (Generate QR/Token)
         composable(
             route = "enrollment",
             enterTransition = { slideInFromRight() },
@@ -115,14 +142,31 @@ fun AppNavigation(
             popEnterTransition = { slideInFromLeft() },
             popExitTransition = { slideOutToRight() }
         ) {
-            EnrollmentScreen(
-                onClose = {
+            AdminGenerateEnrollmentScreen(
+                onBack = {
                     navController.navigate("dashboard") {
                         popUpTo("dashboard") { inclusive = true }
                     }
                 },
-                onNavigate = navigateTo,
                 isDark = isDark
+            )
+        }
+
+        // Employee Enrollment (QR Scan / Token Input)
+        composable(
+            route = "employee_enrollment",
+            enterTransition = { slideInFromRight() },
+            exitTransition = { slideOutToLeft() },
+            popEnterTransition = { slideInFromLeft() },
+            popExitTransition = { slideOutToRight() }
+        ) {
+            EmployeeEnrollmentScreen(
+                onEnrollSuccess = {
+                    navController.navigate("dashboard") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onBack = { navController.popBackStack() }
             )
         }
 

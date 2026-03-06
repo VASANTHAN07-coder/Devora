@@ -3,24 +3,30 @@ package com.devora.devicemanager.ui.screens.login
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
@@ -34,6 +40,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -74,9 +81,12 @@ import kotlinx.coroutines.launch
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
+    onEmployeeRegister: () -> Unit = {},
+    onEmployeeEnroll: () -> Unit = {},
     isDark: Boolean,
     onThemeToggle: () -> Unit
 ) {
+    var selectedRole by remember { mutableIntStateOf(0) } // 0=Admin, 1=Employee
     var adminId by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
@@ -219,167 +229,284 @@ fun LoginScreen(
                             color = PurpleCore.copy(alpha = 0.15f)
                         )
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                        // 5. Admin ID label
-                        Text(
-                            text = "Admin ID",
-                            fontFamily = DMSans,
-                            fontWeight = FontWeight.Normal,
-                            fontSize = 13.sp,
-                            color = PurpleCore,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // 6. Admin ID TextField
-                        Box(
+                        // Role toggle: Admin / Employee
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(52.dp)
-                                .background(inputBg, InputShape)
-                                .padding(horizontal = 14.dp),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Filled.Person,
-                                    contentDescription = null,
-                                    tint = PurpleCore,
-                                    modifier = Modifier.size(20.dp)
+                                .height(44.dp)
+                                .background(
+                                    if (isDark) Color(0xFF161626) else Color(0xFFEEEBFF),
+                                    RoundedCornerShape(12.dp)
                                 )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Box(modifier = Modifier.weight(1f)) {
-                                    if (adminId.isEmpty()) {
+                                .border(
+                                    1.dp,
+                                    PurpleCore.copy(alpha = 0.20f),
+                                    RoundedCornerShape(12.dp)
+                                )
+                        ) {
+                            listOf("Admin Login" to Icons.Filled.Shield, "Employee Login" to Icons.Filled.PersonAdd).forEachIndexed { index, (label, icon) ->
+                                val isSelected = selectedRole == index
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight()
+                                        .padding(4.dp)
+                                        .background(
+                                            if (isSelected) PurpleCore else Color.Transparent,
+                                            RoundedCornerShape(10.dp)
+                                        )
+                                        .clickable { selectedRole = index },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = icon,
+                                            contentDescription = null,
+                                            tint = if (isSelected) Color.White else TextMuted,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
                                         Text(
-                                            text = "Enter admin ID",
-                                            fontFamily = DMSans,
-                                            fontSize = 14.sp,
-                                            color = TextMuted
+                                            text = label,
+                                            fontFamily = PlusJakartaSans,
+                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                            fontSize = 12.sp,
+                                            color = if (isSelected) Color.White else TextMuted
                                         )
                                     }
-                                    BasicTextField(
-                                        value = adminId,
-                                        onValueChange = { adminId = it },
-                                        textStyle = TextStyle(
-                                            fontFamily = DMSans,
-                                            fontSize = 14.sp,
-                                            color = textColor
-                                        ),
-                                        singleLine = true,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
                                 }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
 
-                        // 7. Password label
-                        Text(
-                            text = "Password",
-                            fontFamily = DMSans,
-                            fontWeight = FontWeight.Normal,
-                            fontSize = 13.sp,
-                            color = PurpleCore,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        if (selectedRole == 0) {
+                            // ══════ ADMIN LOGIN FIELDS ══════
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                            // 5. Admin ID label
+                            Text(
+                                text = "Admin ID",
+                                fontFamily = DMSans,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 13.sp,
+                                color = PurpleCore,
+                                modifier = Modifier.fillMaxWidth()
+                            )
 
-                        // 8. Password TextField
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(52.dp)
-                                .background(inputBg, InputShape)
-                                .padding(horizontal = 14.dp),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Filled.Lock,
-                                    contentDescription = null,
-                                    tint = PurpleCore,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Box(modifier = Modifier.weight(1f)) {
-                                    if (password.isEmpty()) {
-                                        Text(
-                                            text = "Enter password",
-                                            fontFamily = DMSans,
-                                            fontSize = 14.sp,
-                                            color = TextMuted
-                                        )
-                                    }
-                                    BasicTextField(
-                                        value = password,
-                                        onValueChange = { password = it },
-                                        textStyle = TextStyle(
-                                            fontFamily = DMSans,
-                                            fontSize = 14.sp,
-                                            color = textColor
-                                        ),
-                                        singleLine = true,
-                                        visualTransformation = if (showPassword) {
-                                            VisualTransformation.None
-                                        } else {
-                                            PasswordVisualTransformation()
-                                        },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                                IconButton(
-                                    onClick = { showPassword = !showPassword },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // 6. Admin ID TextField
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(52.dp)
+                                    .background(inputBg, InputShape)
+                                    .padding(horizontal = 14.dp),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
-                                        imageVector = if (showPassword) {
-                                            Icons.Filled.VisibilityOff
-                                        } else {
-                                            Icons.Filled.Visibility
-                                        },
-                                        contentDescription = "Toggle password visibility",
+                                        imageVector = Icons.Filled.Person,
+                                        contentDescription = null,
                                         tint = PurpleCore,
                                         modifier = Modifier.size(20.dp)
                                     )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        // 9. Sign In button
-                        DevoraButton(
-                            text = "Sign In",
-                            onClick = {
-                                isLoading = true
-                                if (adminId == "admin" && password == "admin123") {
-                                    onLoginSuccess()
-                                } else {
-                                    isLoading = false
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("Invalid credentials")
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        if (adminId.isEmpty()) {
+                                            Text(
+                                                text = "Enter admin ID",
+                                                fontFamily = DMSans,
+                                                fontSize = 14.sp,
+                                                color = TextMuted
+                                            )
+                                        }
+                                        BasicTextField(
+                                            value = adminId,
+                                            onValueChange = { adminId = it },
+                                            textStyle = TextStyle(
+                                                fontFamily = DMSans,
+                                                fontSize = 14.sp,
+                                                color = textColor
+                                            ),
+                                            singleLine = true,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
                                     }
                                 }
-                            },
-                            variant = ButtonVariant.PRIMARY,
-                            isLoading = isLoading,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                            }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                        // 10. Forgot credentials
-                        Text(
-                            text = "Forgot credentials? Contact IT Admin",
-                            fontFamily = DMSans,
-                            fontWeight = FontWeight.Normal,
-                            fontSize = 12.sp,
-                            color = TextMuted
-                        )
+                            // 7. Password label
+                            Text(
+                                text = "Password",
+                                fontFamily = DMSans,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 13.sp,
+                                color = PurpleCore,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // 8. Password TextField
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(52.dp)
+                                    .background(inputBg, InputShape)
+                                    .padding(horizontal = 14.dp),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Lock,
+                                        contentDescription = null,
+                                        tint = PurpleCore,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        if (password.isEmpty()) {
+                                            Text(
+                                                text = "Enter password",
+                                                fontFamily = DMSans,
+                                                fontSize = 14.sp,
+                                                color = TextMuted
+                                            )
+                                        }
+                                        BasicTextField(
+                                            value = password,
+                                            onValueChange = { password = it },
+                                            textStyle = TextStyle(
+                                                fontFamily = DMSans,
+                                                fontSize = 14.sp,
+                                                color = textColor
+                                            ),
+                                            singleLine = true,
+                                            visualTransformation = if (showPassword) {
+                                                VisualTransformation.None
+                                            } else {
+                                                PasswordVisualTransformation()
+                                            },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { showPassword = !showPassword },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (showPassword) {
+                                                Icons.Filled.VisibilityOff
+                                            } else {
+                                                Icons.Filled.Visibility
+                                            },
+                                            contentDescription = "Toggle password visibility",
+                                            tint = PurpleCore,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            // 9. Sign In button
+                            DevoraButton(
+                                text = "Sign In",
+                                onClick = {
+                                    isLoading = true
+                                    if (adminId == "admin" && password == "admin123") {
+                                        onLoginSuccess()
+                                    } else {
+                                        isLoading = false
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Invalid credentials")
+                                        }
+                                    }
+                                },
+                                variant = ButtonVariant.PRIMARY,
+                                isLoading = isLoading,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // 10. Forgot credentials
+                            Text(
+                                text = "Forgot credentials? Contact IT Admin",
+                                fontFamily = DMSans,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 12.sp,
+                                color = TextMuted
+                            )
+                        } else {
+                            // ══════ EMPLOYEE LOGIN ══════
+                            Text(
+                                text = "New employee? Register your account and request a device.",
+                                fontFamily = DMSans,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 13.sp,
+                                color = TextMuted
+                            )
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            DevoraButton(
+                                text = "Register as Employee →",
+                                onClick = onEmployeeRegister,
+                                variant = ButtonVariant.PRIMARY,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // OR divider
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Divider(
+                                    modifier = Modifier.weight(1f),
+                                    thickness = 1.dp,
+                                    color = PurpleCore.copy(alpha = 0.15f)
+                                )
+                                Text(
+                                    text = "  OR  ",
+                                    fontFamily = DMSans,
+                                    fontSize = 11.sp,
+                                    color = TextMuted
+                                )
+                                Divider(
+                                    modifier = Modifier.weight(1f),
+                                    thickness = 1.dp,
+                                    color = PurpleCore.copy(alpha = 0.15f)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            DevoraButton(
+                                text = "Enroll Device →",
+                                onClick = onEmployeeEnroll,
+                                variant = ButtonVariant.OUTLINE,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Text(
+                                text = "Already registered? Sign in from Admin tab",
+                                fontFamily = DMSans,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 12.sp,
+                                color = TextMuted
+                            )
+                        }
                     }
                 }
 
