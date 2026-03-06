@@ -249,31 +249,8 @@ fun AdminGenerateEnrollmentScreen(
 
                             Spacer(Modifier.height(8.dp))
 
-                            // Device Label
-                            Text("Device Label / Name", fontFamily = DMSans, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = PurpleCore)
-                            Spacer(Modifier.height(6.dp))
-                            BasicTextField(
-                                value = deviceLabel,
-                                onValueChange = { deviceLabel = it },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(inputBg)
-                                    .padding(14.dp),
-                                textStyle = TextStyle(fontFamily = DMSans, fontSize = 14.sp, color = textColor),
-                                singleLine = true,
-                                decorationBox = { inner ->
-                                    if (deviceLabel.isEmpty()) {
-                                        Text("e.g. Marketing-Phone-01", fontFamily = DMSans, fontSize = 14.sp, color = TextMuted)
-                                    }
-                                    inner()
-                                }
-                            )
-
-                            Spacer(Modifier.height(12.dp))
-
-                            // Assigned Employee
-                            Text("Assigned Employee", fontFamily = DMSans, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = PurpleCore)
+                            // Employee ID
+                            Text("Employee ID", fontFamily = DMSans, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = PurpleCore)
                             Spacer(Modifier.height(6.dp))
                             BasicTextField(
                                 value = assignedEmployee,
@@ -287,161 +264,11 @@ fun AdminGenerateEnrollmentScreen(
                                 singleLine = true,
                                 decorationBox = { inner ->
                                     if (assignedEmployee.isEmpty()) {
-                                        Text("Employee name or ID", fontFamily = DMSans, fontSize = 14.sp, color = TextMuted)
+                                        Text("Enter Employee ID", fontFamily = DMSans, fontSize = 14.sp, color = TextMuted)
                                     }
                                     inner()
                                 }
                             )
-
-                            Spacer(Modifier.height(12.dp))
-
-                            // Department dropdown
-                            Text("Department", fontFamily = DMSans, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = PurpleCore)
-                            Spacer(Modifier.height(6.dp))
-                            Box(modifier = Modifier.fillMaxWidth()) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(inputBg)
-                                        .then(
-                                            if (showDeptDropdown) Modifier.border(1.dp, PurpleCore, RoundedCornerShape(10.dp))
-                                            else Modifier
-                                        )
-                                        .clickable { showDeptDropdown = true }
-                                        .padding(14.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = selectedDepartment.ifEmpty { "Select Department" },
-                                            fontFamily = DMSans,
-                                            fontSize = 14.sp,
-                                            color = if (selectedDepartment.isEmpty()) TextMuted else textColor
-                                        )
-                                        Icon(
-                                            imageVector = if (showDeptDropdown) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                                            contentDescription = null,
-                                            tint = PurpleCore,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-                                DropdownMenu(
-                                    expanded = showDeptDropdown,
-                                    onDismissRequest = { showDeptDropdown = false },
-                                    modifier = Modifier.background(if (isDark) Color(0xFF1E1E32) else Color.White)
-                                ) {
-                                    listOf("IT", "HR", "Finance", "Operations", "Sales", "Management").forEach { dept ->
-                                        DropdownMenuItem(
-                                            text = { Text(dept, fontFamily = DMSans, fontSize = 14.sp, color = textColor) },
-                                            onClick = {
-                                                selectedDepartment = dept
-                                                showDeptDropdown = false
-                                            },
-                                            leadingIcon = {
-                                                if (selectedDepartment == dept) {
-                                                    Icon(Icons.Filled.Check, tint = PurpleCore, contentDescription = null, modifier = Modifier.size(16.dp))
-                                                }
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-
-                            Spacer(Modifier.height(12.dp))
-
-                            // Device Type dropdown
-                            Text("Device Type", fontFamily = DMSans, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = PurpleCore)
-                            Spacer(Modifier.height(6.dp))
-                            Box(modifier = Modifier.fillMaxWidth()) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(inputBg)
-                                        .then(
-                                            if (showTypeDropdown) Modifier.border(1.dp, PurpleCore, RoundedCornerShape(10.dp))
-                                            else Modifier
-                                        )
-                                        .clickable { showTypeDropdown = true }
-                                        .padding(14.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = selectedDeviceType.ifEmpty { "Select Device Type" },
-                                            fontFamily = DMSans,
-                                            fontSize = 14.sp,
-                                            color = if (selectedDeviceType.isEmpty()) TextMuted else textColor
-                                        )
-                                        Icon(
-                                            imageVector = if (showTypeDropdown) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                                            contentDescription = null,
-                                            tint = PurpleCore,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-                                DropdownMenu(
-                                    expanded = showTypeDropdown,
-                                    onDismissRequest = { showTypeDropdown = false },
-                                    modifier = Modifier.background(if (isDark) Color(0xFF1E1E32) else Color.White)
-                                ) {
-                                    listOf("Smartphone", "Tablet", "Laptop").forEach { type ->
-                                        DropdownMenuItem(
-                                            text = { Text(type, fontFamily = DMSans, fontSize = 14.sp, color = textColor) },
-                                            onClick = {
-                                                selectedDeviceType = type
-                                                showTypeDropdown = false
-                                            },
-                                            leadingIcon = {
-                                                if (selectedDeviceType == type) {
-                                                    Icon(Icons.Filled.Check, tint = PurpleCore, contentDescription = null, modifier = Modifier.size(16.dp))
-                                                }
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-
-                            Spacer(Modifier.height(12.dp))
-
-                            // Token Validity
-                            Text("Token Validity", fontFamily = DMSans, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = PurpleCore)
-                            Spacer(Modifier.height(8.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf("24h", "48h", "7 days").forEach { validity ->
-                                    val isSelected = selectedValidity == validity
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(100.dp))
-                                            .background(if (isSelected) PurpleCore else Color.Transparent)
-                                            .border(
-                                                1.dp,
-                                                if (isSelected) Color.Transparent else Color(0x407C3AED),
-                                                RoundedCornerShape(100.dp)
-                                            )
-                                            .clickable { selectedValidity = validity }
-                                            .padding(horizontal = 18.dp, vertical = 9.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            validity,
-                                            fontFamily = PlusJakartaSans,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontSize = 13.sp,
-                                            color = if (isSelected) Color.White else PurpleCore
-                                        )
-                                    }
-                                }
-                            }
 
                             Spacer(Modifier.height(12.dp))
 
@@ -495,9 +322,9 @@ fun AdminGenerateEnrollmentScreen(
                 item {
                     Button(
                         onClick = {
-                            if (deviceLabel.isBlank() || assignedEmployee.isBlank()) {
+                            if (assignedEmployee.isBlank()) {
                                 coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("Please fill all required fields")
+                                    snackbarHostState.showSnackbar("Please enter Employee ID")
                                 }
                                 return@Button
                             }
