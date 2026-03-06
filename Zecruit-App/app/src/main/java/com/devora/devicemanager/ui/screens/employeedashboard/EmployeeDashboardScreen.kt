@@ -249,6 +249,7 @@ fun EmployeeDashboardScreen(
             // MY DEVICE STATUS CARD
             // ══════════════════════════════════════
             DevoraCard(accentColor = Success, isDark = isDark) {
+                Column {
                 SectionHeader(title = "MY DEVICE STATUS", isDark = isDark)
 
                 // Device name row
@@ -394,6 +395,7 @@ fun EmployeeDashboardScreen(
                             }
                         }
                     }
+                }   
                 }
             }
 
@@ -403,6 +405,7 @@ fun EmployeeDashboardScreen(
             // DEVICE INFORMATION CARD
             // ══════════════════════════════════════
             DevoraCard(accentColor = PurpleCore, isDark = isDark) {
+                Column {
                 SectionHeader(title = "DEVICE INFORMATION", isDark = isDark)
 
                 val infoItems = listOf(
@@ -448,6 +451,7 @@ fun EmployeeDashboardScreen(
                         )
                     }
                 }
+                }
             }
 
             Spacer(Modifier.height(16.dp))
@@ -456,6 +460,7 @@ fun EmployeeDashboardScreen(
             // ACTIVE POLICIES CARD
             // ══════════════════════════════════════
             DevoraCard(accentColor = PurpleCore, isDark = isDark) {
+                Column {
                 SectionHeader(title = "ACTIVE POLICIES ON THIS DEVICE", isDark = isDark)
 
                 data class PolicyStatus(
@@ -546,6 +551,7 @@ fun EmployeeDashboardScreen(
                         )
                     }
                 }
+                }
             }
 
             Spacer(Modifier.height(16.dp))
@@ -566,7 +572,8 @@ fun EmployeeDashboardScreen(
             )
 
             DevoraCard(isDark = isDark) {
-                myActivities.forEachIndexed { index, (event, time, color) ->
+                Column {
+                    myActivities.forEachIndexed { index, (event, time, color) ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -599,6 +606,7 @@ fun EmployeeDashboardScreen(
                             color = PurpleCore.copy(alpha = 0.08f),
                             thickness = 1.dp
                         )
+                    }
                     }
                 }
             }
