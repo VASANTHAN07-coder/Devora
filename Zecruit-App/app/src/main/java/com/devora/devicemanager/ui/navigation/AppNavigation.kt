@@ -165,9 +165,10 @@ fun AppNavigation(
                 onThemeToggle = onThemeToggle,
                 onSignOut = {
                     authViewModel.signOut()
-                    navController.navigate("login") {
-                        popUpTo(0)
-                    }
+                        navController.popBackStack("dashboard", inclusive = true)
+                        navController.navigate("login") {
+                            launchSingleTop = true
+                        }
                 },
                 onNavigate = navigateTo
             )
