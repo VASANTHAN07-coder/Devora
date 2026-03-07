@@ -2,7 +2,6 @@ package com.devora.devicemanager.ui.screens.employeedashboard
 
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -69,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.devora.devicemanager.collector.DeviceInfoCollector
 import com.devora.devicemanager.ui.components.DevoraCard
 import com.devora.devicemanager.ui.components.SectionHeader
 import com.devora.devicemanager.ui.components.StatusBadge
@@ -88,9 +88,6 @@ import com.devora.devicemanager.ui.theme.Success
 import com.devora.devicemanager.ui.theme.TextMuted
 import com.devora.devicemanager.ui.theme.TextPrimary
 import com.devora.devicemanager.ui.theme.Warning
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @Composable
 fun EmployeeDashboardScreen(
@@ -99,6 +96,7 @@ fun EmployeeDashboardScreen(
     onThemeToggle: () -> Unit
 ) {
     val context = LocalContext.current
+    val deviceInfo = remember { DeviceInfoCollector.collect(context) }
     var selectedNavItem by remember { mutableIntStateOf(0) }
     var showSignOutDialog by remember { mutableStateOf(false) }
 
@@ -212,9 +210,7 @@ fun EmployeeDashboardScreen(
                         }
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "Enrolled: ${
-                                SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date())
-                            }",
+                            "${deviceInfo.manufacturer.replaceFirstChar { it.uppercase() }} · Android ${deviceInfo.osVersion}",
                             fontFamily = JetBrainsMono,
                             fontSize = 11.sp,
                             color = TextMuted
@@ -262,14 +258,14 @@ fun EmployeeDashboardScreen(
                 ) {
                     Column {
                         Text(
-                            Build.MODEL,
+                            deviceInfo.model,
                             fontFamily = PlusJakartaSans,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                             color = textColor
                         )
                         Text(
-                            Build.MANUFACTURER,
+                            deviceInfo.manufacturer.replaceFirstChar { it.uppercase() },
                             fontFamily = DMSans,
                             fontSize = 12.sp,
                             color = TextMuted
@@ -409,14 +405,14 @@ fun EmployeeDashboardScreen(
                 SectionHeader(title = "DEVICE INFORMATION", isDark = isDark)
 
                 val infoItems = listOf(
-                    Triple("Model", Build.MODEL, textColor),
+                    Triple("Model", deviceInfo.model, textColor),
                     Triple(
                         "Manufacturer",
-                        Build.MANUFACTURER.replaceFirstChar { it.uppercase() },
+                        deviceInfo.manufacturer.replaceFirstChar { it.uppercase() },
                         textColor
                     ),
-                    Triple("Android", Build.VERSION.RELEASE, textColor),
-                    Triple("SDK Level", Build.VERSION.SDK_INT.toString(), textColor),
+                    Triple("Android", deviceInfo.osVersion, textColor),
+                    Triple("SDK Level", deviceInfo.sdkVersion.toString(), textColor),
                     Triple("Status", "Enrolled ✓", Success),
                     Triple("Policy", "Enterprise Standard", PurpleCore),
                     Triple("Server", "Connected", Success)
@@ -563,15 +559,33 @@ fun EmployeeDashboardScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            val myActivities = listOf(
-                Triple("Device enrolled successfully", "Just now", Success),
-                Triple("Enterprise policies applied", "1 min ago", PurpleCore),
-                Triple("Server connection established", "2 min ago", Success),
-                Triple("Device Owner mode activated", "3 min ago", PurpleCore),
-                Triple("Security scan completed", "5 min ago", Success)
-            )
+            val myActivities = emptyList<Triple<String, String, Color>>()
 
             DevoraCard(isDark = isDark) {
+                if (myActivities.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Filled.CheckCircle,
+                                contentDescription = null,
+                                tint = TextMuted.copy(alpha = 0.5f),
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "No recent activity",
+                                fontFamily = DMSans,
+                                fontSize = 13.sp,
+                                color = TextMuted
+                            )
+                        }
+                    }
+                } else {
                 Column {
                     myActivities.forEachIndexed { index, (event, time, color) ->
                     Row(
@@ -608,6 +622,7 @@ fun EmployeeDashboardScreen(
                         )
                     }
                     }
+                }
                 }
             }
 
