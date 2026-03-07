@@ -18,25 +18,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/**").authenticated()
-                )
-                .httpBasic(basic -> {});
+            .csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(auth -> auth
+                .anyRequest().permitAll()
+            );
         return http.build();
-    }
-
-    @Bean
-    public UserDetailsService userDetailsService() {
-        var user = User.withUsername("mdm-device")
-                .password(passwordEncoder().encode("SecurePass123"))
-                .roles("DEVICE")
-                .build();
-        return new InMemoryUserDetailsManager(user);
-    }
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
     }
 }
