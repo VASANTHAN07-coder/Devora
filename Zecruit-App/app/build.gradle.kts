@@ -72,6 +72,12 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.coil.compose)
 
+    // QR Code generation
+    implementation(libs.zxing.core)
+
+    // JSON
+    implementation(libs.gson)
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

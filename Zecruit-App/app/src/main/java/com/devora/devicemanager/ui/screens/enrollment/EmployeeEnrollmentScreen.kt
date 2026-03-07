@@ -82,6 +82,11 @@ import com.devora.devicemanager.ui.theme.PlusJakartaSans
 import com.devora.devicemanager.ui.theme.PurpleCore
 import com.devora.devicemanager.ui.theme.PurpleDeep
 import com.devora.devicemanager.ui.theme.Success
+import com.devora.devicemanager.enrollment.EnrollmentStatus
+import com.devora.devicemanager.enrollment.EnrollmentViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -109,8 +114,12 @@ fun EmployeeEnrollmentScreen(
     onEnrollSuccess: () -> Unit,
     onBack: () -> Unit
 ) {
+    val enrollmentVm: EnrollmentViewModel = viewModel()
+    val enrollmentState by enrollmentVm.uiState.collectAsState()
+
     var selectedTab by remember { mutableIntStateOf(0) }
     var tokenInput by remember { mutableStateOf("") }
+    // enrollStep is now driven by the ViewModel's stepIndex
     var enrollStep by remember { mutableIntStateOf(-1) }
     var showHowTo by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
@@ -124,13 +133,22 @@ fun EmployeeEnrollmentScreen(
         return clean.chunked(4).joinToString("-")
     }
 
+    // Sync the ViewModel's step index to the local enrollStep for unchanged UI rendering
+    enrollStep = enrollmentState.stepIndex
+
+    // Show error messages from the ViewModel
+    if (enrollmentState.errorMessage != null) {
+        LaunchedEffect(enrollmentState.errorMessage) {
+            snackbarHostState.showSnackbar(enrollmentState.errorMessage ?: "Enrollment error")
+        }
+    }
+
     fun startEnrollment() {
-        coroutineScope.launch {
-            enrollStep = 0
-            repeat(5) { step ->
-                delay(1500)
-                enrollStep = step + 1
-            }
+        if (tokenInput.isNotEmpty()) {
+            enrollmentVm.onTokenChanged(tokenInput)
+            enrollmentVm.enrollWithToken()
+        } else {
+            enrollmentVm.simulateQrScan()
         }
     }
 
@@ -455,7 +473,7 @@ fun EmployeeEnrollmentScreen(
 
                     // Simulate QR scan (demo)
                     Button(
-                        onClick = { startEnrollment() },
+                        onClick = { enrollmentVm.simulateQrScan() },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),
@@ -504,7 +522,10 @@ fun EmployeeEnrollmentScreen(
                     // Large token input
                     BasicTextField(
                         value = tokenInput,
-                        onValueChange = { tokenInput = formatToken(it) },
+                        onValueChange = {
+                            tokenInput = formatToken(it)
+                            enrollmentVm.onTokenChanged(tokenInput)
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
@@ -570,7 +591,8 @@ fun EmployeeEnrollmentScreen(
                                 }
                                 return@Button
                             }
-                            startEnrollment()
+                            enrollmentVm.onTokenChanged(tokenInput)
+                            enrollmentVm.enrollWithToken()
                         },
                         enabled = tokenInput.length == 19,
                         modifier = Modifier

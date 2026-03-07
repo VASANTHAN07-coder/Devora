@@ -96,6 +96,7 @@ import com.devora.devicemanager.ui.theme.Success
 import com.devora.devicemanager.ui.theme.TextMuted
 import com.devora.devicemanager.ui.theme.TextPrimary
 import com.devora.devicemanager.ui.theme.Warning
+import com.devora.devicemanager.enrollment.QrProvisioningHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -729,20 +730,9 @@ fun AdminGenerateEnrollmentScreen(
                         if (showPayload) {
                             Spacer(Modifier.height(8.dp))
 
-                            val jsonPayload = """
-{
-  "android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME":
-    "com.devora.devicemanager/.receiver.DeviceAdminReceiver",
-
-  "android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION":
-    "https://yourserver.com/devora.apk",
-
-  "android.app.extra.PROVISIONING_ADMIN_EXTRAS_BUNDLE": {
-    "enrollment_token": "$generatedToken",
-    "server_url": "https://yourserver.com/api",
-    "device_label": "$deviceLabel"
-  }
-}""".trimIndent()
+                            val jsonPayload = QrProvisioningHelper.buildProvisioningPayload(
+                                enrollmentToken = generatedToken
+                            )
 
                             Box(
                                 modifier = Modifier
