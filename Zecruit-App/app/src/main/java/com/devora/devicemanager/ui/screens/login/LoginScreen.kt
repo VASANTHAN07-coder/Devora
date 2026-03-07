@@ -101,7 +101,7 @@ fun LoginScreen(
         showPassword = false
     }
 
-    val bgColor = if (isDark) DarkBgBase else Color(0xFFF5F3FF)
+    val bgColor = if (isDark) DarkBgBase else Color(0xFFF7F8FA)
     val cardBg = if (isDark) DarkBgSurface else BgSurface
     val inputBg = if (isDark) DarkBgElevated else BgElevated
     val textColor = if (isDark) DarkTextPrimary else TextPrimary
@@ -196,7 +196,7 @@ fun LoginScreen(
                                 .fillMaxWidth()
                                 .height(44.dp)
                                 .background(
-                                    if (isDark) Color(0xFF161626) else Color(0xFFEEEBFF),
+                                    if (isDark) Color(0xFF242430) else Color(0xFFE9EEF3),
                                     RoundedCornerShape(12.dp)
                                 )
                                 .border(

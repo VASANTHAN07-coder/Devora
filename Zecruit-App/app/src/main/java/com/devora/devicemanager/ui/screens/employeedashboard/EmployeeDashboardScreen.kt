@@ -224,7 +224,7 @@ fun EmployeeDashboardScreen(
                             .size(56.dp)
                             .clip(CircleShape)
                             .background(
-                                Brush.linearGradient(listOf(Success, Color(0xFF059669)))
+                                Brush.linearGradient(listOf(Success, Color(0xFF2AB87A)))
                             ),
                         contentAlignment = Alignment.Center
                     ) {
@@ -822,7 +822,7 @@ fun EmployeeDashboardScreen(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(
                                     Brush.linearGradient(
-                                        listOf(Danger, Color(0xFFE11D48))
+                                        listOf(Danger, Color(0xFFE54545))
                                     )
                                 )
                                 .clickable {

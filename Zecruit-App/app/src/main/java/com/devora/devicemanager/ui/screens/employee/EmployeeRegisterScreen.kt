@@ -80,8 +80,8 @@ fun EmployeeRegisterScreen(
     val scrollState = rememberScrollState()
 
     val bgColor = if (isDark) DarkBgBase else BgBase
-    val textColor = if (isDark) Color(0xFFF2EFFF) else Color(0xFF1A0F33)
-    val inputBg = if (isDark) DarkBgElevated else Color(0xFFEEEBFF)
+    val textColor = if (isDark) Color(0xFFF0F2F5) else Color(0xFF1D1D21)
+    val inputBg = if (isDark) DarkBgElevated else Color(0xFFE9EEF3)
 
     // Step tracking (visual only — all fields on one page)
     val currentStep = when {
@@ -138,7 +138,7 @@ fun EmployeeRegisterScreen(
                                 when {
                                     index < currentStep -> Success
                                     index == currentStep -> PurpleCore
-                                    else -> if (isDark) DarkBgElevated else Color(0xFFEEEBFF)
+                                    else -> if (isDark) DarkBgElevated else Color(0xFFE9EEF3)
                                 }
                             )
                             .then(

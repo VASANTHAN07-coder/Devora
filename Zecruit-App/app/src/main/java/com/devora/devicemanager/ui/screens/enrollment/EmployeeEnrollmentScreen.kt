@@ -98,16 +98,16 @@ import java.util.Locale
 // Always dark background (#08080F)
 // ══════════════════════════════════════
 
-private val DarkBase = Color(0xFF08080F)
-private val DarkSurface = Color(0xFF10101E)
-private val DarkElevated = Color(0xFF161626)
-private val DarkBorder = Color(0xFF2A2A3E)
-private val Purple = Color(0xFF7C3AED)
-private val PurpleLight = Color(0xFF9D5CF6)
-private val PurpleFaint = Color(0xFFB47FFF)
-private val TextWhite = Color(0xFFF2EFFF)
-private val TextDim = Color(0xFF4D4870)
-private val TextSub = Color(0xFF9B92C8)
+private val DarkBase = Color(0xFF0F0F14)
+private val DarkSurface = Color(0xFF1A1A24)
+private val DarkElevated = Color(0xFF242430)
+private val DarkBorder = Color(0xFF343444)
+private val Purple = Color(0xFF7B61FF)
+private val PurpleLight = Color(0xFFC0B3FF)
+private val PurpleFaint = Color(0xFFC0B3FF)
+private val TextWhite = Color(0xFFF0F2F5)
+private val TextDim = Color(0xFF6B7D8D)
+private val TextSub = Color(0xFF8899A6)
 
 @Composable
 fun EmployeeEnrollmentScreen(
@@ -226,7 +226,7 @@ fun EmployeeEnrollmentScreen(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
                     .background(DarkSurface)
-                    .border(1.dp, Color(0x337C3AED), RoundedCornerShape(14.dp))
+                    .border(1.dp, Color(0x337B61FF), RoundedCornerShape(14.dp))
                     .padding(16.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -261,7 +261,7 @@ fun EmployeeEnrollmentScreen(
                     .height(48.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(DarkSurface)
-                    .border(1.dp, Color(0x267C3AED), RoundedCornerShape(12.dp))
+                    .border(1.dp, Color(0x267B61FF), RoundedCornerShape(12.dp))
             ) {
                 listOf("Scan QR Code", "Enter Token").forEachIndexed { index, tab ->
                     val isSelected = selectedTab == index
@@ -303,7 +303,7 @@ fun EmployeeEnrollmentScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
                             .background(DarkSurface)
-                            .border(1.dp, Color(0x1A7C3AED), RoundedCornerShape(12.dp))
+                            .border(1.dp, Color(0x1A7B61FF), RoundedCornerShape(12.dp))
                             .padding(14.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -329,7 +329,7 @@ fun EmployeeEnrollmentScreen(
                             .height(260.dp)
                             .clip(RoundedCornerShape(16.dp))
                             .background(Color.Black)
-                            .border(1.dp, Color(0x407C3AED), RoundedCornerShape(16.dp))
+                            .border(1.dp, Color(0x407B61FF), RoundedCornerShape(16.dp))
                     ) {
                         // Corner brackets
                         Canvas(Modifier.fillMaxSize()) {
@@ -408,7 +408,7 @@ fun EmployeeEnrollmentScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
                             .background(DarkSurface)
-                            .border(1.dp, Color(0x1A7C3AED), RoundedCornerShape(10.dp))
+                            .border(1.dp, Color(0x1A7B61FF), RoundedCornerShape(10.dp))
                             .clickable { showHowTo = !showHowTo }
                             .padding(14.dp)
                     ) {
@@ -532,7 +532,7 @@ fun EmployeeEnrollmentScreen(
                             .background(DarkElevated)
                             .border(
                                 1.5.dp,
-                                if (tokenInput.isNotEmpty()) Purple else Color(0x357C3AED),
+                                if (tokenInput.isNotEmpty()) Purple else Color(0x357B61FF),
                                 RoundedCornerShape(12.dp)
                             )
                             .padding(20.dp),
@@ -601,7 +601,7 @@ fun EmployeeEnrollmentScreen(
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Purple,
-                            disabledContainerColor = Color(0xFF2A1A5E)
+                            disabledContainerColor = Color(0xFF2A2345)
                         ),
                         elevation = ButtonDefaults.buttonElevation(0.dp)
                     ) {
@@ -658,7 +658,7 @@ fun EmployeeEnrollmentScreen(
                             .scale(pulseAnim)
                             .clip(CircleShape)
                             .background(Purple.copy(alpha = 0.12f))
-                            .border(2.dp, Color(0x407C3AED), CircleShape),
+                            .border(2.dp, Color(0x407B61FF), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(
@@ -864,7 +864,7 @@ fun EmployeeEnrollmentScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(16.dp))
                             .background(DarkSurface)
-                            .border(1.dp, Color(0x337C3AED), RoundedCornerShape(16.dp))
+                            .border(1.dp, Color(0x337B61FF), RoundedCornerShape(16.dp))
                             .padding(20.dp)
                     ) {
                         Column {

@@ -52,8 +52,8 @@ fun SplashScreen(
         onSplashFinished()
     }
 
-    val darkBg = Color(0xFF08080F)
-    val darkBg2 = Color(0xFF0C0C16)
+    val darkBg = Color(0xFF0F0F14)
+    val darkBg2 = Color(0xFF14141E)
 
     Box(
         modifier = Modifier
@@ -86,7 +86,7 @@ fun SplashScreen(
                 fontFamily = PlusJakartaSans,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 52.sp,
-                color = Color(0xFFF2EFFF)
+                color = Color(0xFFF0F2F5)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -111,7 +111,7 @@ fun SplashScreen(
                 fontFamily = PlusJakartaSans,
                 fontWeight = FontWeight.Normal,
                 fontSize = 13.sp,
-                color = Color(0xFF9B92C8)
+                color = Color(0xFF8899A6)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -122,7 +122,7 @@ fun SplashScreen(
                 fontFamily = JetBrainsMono,
                 fontWeight = FontWeight.Normal,
                 fontSize = 10.sp,
-                color = Color(0xFF4D4870),
+                color = Color(0xFF6B7D8D),
                 letterSpacing = 2.sp
             )
         }

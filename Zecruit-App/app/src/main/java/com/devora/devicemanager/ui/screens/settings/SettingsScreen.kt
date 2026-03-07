@@ -717,7 +717,7 @@ fun SettingsScreen(
                     .padding(horizontal = 32.dp)
                     .clip(RoundedCornerShape(24.dp))
                     .background(
-                        if (isDark) Color(0xFF10101E) else Color(0xFFFFFFFF)
+                        if (isDark) Color(0xFF1A1A24) else Color(0xFFFFFFFF)
                     )
                     .border(
                         1.dp,
@@ -760,7 +760,7 @@ fun SettingsScreen(
                         fontFamily = PlusJakartaSans,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
-                        color = if (isDark) Color(0xFFF2EFFF) else Color(0xFF1A0F33)
+                        color = if (isDark) Color(0xFFF0F2F5) else Color(0xFF1D1D21)
                     )
 
                     Spacer(Modifier.height(8.dp))
@@ -821,7 +821,7 @@ fun SettingsScreen(
                                 .height(46.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(
-                                    if (isDark) Color(0xFF161626) else Color(0xFFEEEBFF)
+                                    if (isDark) Color(0xFF242430) else Color(0xFFE9EEF3)
                                 )
                                 .clickable { showSignOutDialog = false },
                             contentAlignment = Alignment.Center
@@ -831,7 +831,7 @@ fun SettingsScreen(
                                 fontFamily = PlusJakartaSans,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 14.sp,
-                                color = if (isDark) Color(0xFF9B92C8) else Color(0xFF4C3D7A)
+                                color = if (isDark) Color(0xFF8899A6) else Color(0xFF536471)
                             )
                         }
 
@@ -844,8 +844,8 @@ fun SettingsScreen(
                                 .background(
                                     Brush.linearGradient(
                                         colors = listOf(
-                                            Color(0xFFF43F5E),
-                                            Color(0xFFE11D48)
+                                            Color(0xFFFF6B6B),
+                                            Color(0xFFE54545)
                                         ),
                                         start = Offset(0f, 0f),
                                         end = Offset(Float.MAX_VALUE, Float.MAX_VALUE)

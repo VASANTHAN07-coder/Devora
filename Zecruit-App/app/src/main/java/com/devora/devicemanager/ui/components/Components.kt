@@ -313,7 +313,7 @@ fun SectionHeader(
                 fontWeight = FontWeight.Bold,
                 fontSize = 13.sp,
                 letterSpacing = 0.5.sp,
-                color = if (isDark) Color(0xFFF2EFFF) else Color(0xFF1A0F33)
+                color = if (isDark) Color(0xFFF0F2F5) else Color(0xFF1D1D21)
             )
         }
 

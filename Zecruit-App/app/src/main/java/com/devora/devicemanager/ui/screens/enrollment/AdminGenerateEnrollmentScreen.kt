@@ -3,8 +3,10 @@ package com.devora.devicemanager.ui.screens.enrollment
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import android.graphics.Bitmap
 import android.widget.Toast
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -70,7 +72,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -144,7 +148,7 @@ fun AdminGenerateEnrollmentScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val textColor = if (isDark) Color(0xFFF2EFFF) else TextPrimary
+    val textColor = if (isDark) Color(0xFFF0F2F5) else TextPrimary
     val inputBg = if (isDark) DarkBgElevated else BgElevated
 
     val activeEnrollments = remember {
@@ -289,7 +293,7 @@ fun AdminGenerateEnrollmentScreen(
                                         )
                                         .border(
                                             1.dp,
-                                            if (enrollType == value) Color(0x407C3AED) else Color(0x1A7C3AED),
+                                            if (enrollType == value) Color(0x407B61FF) else Color(0x1A7B61FF),
                                             RoundedCornerShape(10.dp)
                                         )
                                         .clickable { enrollType = value }
@@ -437,7 +441,11 @@ fun AdminGenerateEnrollmentScreen(
                             SectionHeader(title = "QR CODE FOR DEVICE SETUP", isDark = isDark)
                             Spacer(Modifier.height(16.dp))
 
-                            // QR code canvas
+                            // Real QR code generated with ZXing
+                            val qrBitmap: Bitmap? = remember(generatedToken) {
+                                QrProvisioningHelper.generateEnrollmentTokenQr(generatedToken, 512)
+                            }
+
                             Box(
                                 modifier = Modifier
                                     .size(260.dp)
@@ -446,94 +454,36 @@ fun AdminGenerateEnrollmentScreen(
                                     .border(2.dp, PurpleCore, RoundedCornerShape(16.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Canvas(Modifier.size(220.dp)) {
-                                    val cellSize = size.width / 29f
-                                    val gap = cellSize * 0.2f
-                                    val margin = cellSize * 2
-
-                                    fun drawDetectionSquare(offsetX: Float, offsetY: Float) {
-                                        for (r in 0..6) {
-                                            for (c in 0..6) {
-                                                if (r == 0 || r == 6 || c == 0 || c == 6) {
-                                                    drawRoundRect(
-                                                        color = PurpleCore,
-                                                        topLeft = Offset(offsetX + c * (cellSize + gap), offsetY + r * (cellSize + gap)),
-                                                        size = Size(cellSize, cellSize),
-                                                        cornerRadius = CornerRadius(2.dp.toPx())
-                                                    )
-                                                }
-                                            }
-                                        }
-                                        for (r in 2..4) {
-                                            for (c in 2..4) {
-                                                drawRoundRect(
-                                                    color = PurpleCore,
-                                                    topLeft = Offset(offsetX + c * (cellSize + gap), offsetY + r * (cellSize + gap)),
-                                                    size = Size(cellSize, cellSize),
-                                                    cornerRadius = CornerRadius(2.dp.toPx())
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    // Position detection patterns
-                                    drawDetectionSquare(margin, margin)
-                                    drawDetectionSquare(size.width - margin - 7 * (cellSize + gap), margin)
-                                    drawDetectionSquare(margin, size.height - margin - 7 * (cellSize + gap))
-
-                                    // Data cells
-                                    val seed = generatedToken.hashCode()
-                                    val random = java.util.Random(seed.toLong())
-                                    for (row in 0..28) {
-                                        for (col in 0..28) {
-                                            val inTopLeft = row < 9 && col < 9
-                                            val inTopRight = row < 9 && col > 19
-                                            val inBottomLeft = row > 19 && col < 9
-                                            if (inTopLeft || inTopRight || inBottomLeft) continue
-                                            if (random.nextBoolean()) {
-                                                drawRoundRect(
-                                                    color = PurpleCore.copy(alpha = 0.85f),
-                                                    topLeft = Offset(margin + col * (cellSize + gap), margin + row * (cellSize + gap)),
-                                                    size = Size(cellSize, cellSize),
-                                                    cornerRadius = CornerRadius(1.5.dp.toPx())
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    // Timing patterns
-                                    for (i in 8..20) {
-                                        if (i % 2 == 0) {
-                                            drawRoundRect(
-                                                PurpleCore,
-                                                Offset(margin + i * (cellSize + gap), margin + 6 * (cellSize + gap)),
-                                                Size(cellSize, cellSize),
-                                                CornerRadius(1.dp.toPx())
-                                            )
-                                            drawRoundRect(
-                                                PurpleCore,
-                                                Offset(margin + 6 * (cellSize + gap), margin + i * (cellSize + gap)),
-                                                Size(cellSize, cellSize),
-                                                CornerRadius(1.dp.toPx())
-                                            )
-                                        }
-                                    }
+                                if (qrBitmap != null) {
+                                    Image(
+                                        bitmap = qrBitmap.asImageBitmap(),
+                                        contentDescription = "Enrollment QR Code",
+                                        modifier = Modifier
+                                            .size(230.dp)
+                                            .padding(8.dp),
+                                        contentScale = ContentScale.Fit
+                                    )
+                                } else {
+                                    CircularProgressIndicator(
+                                        color = PurpleCore,
+                                        modifier = Modifier.size(40.dp)
+                                    )
                                 }
 
-                                // Center branding circle
+                                // Center branding circle overlay
                                 Box(
                                     modifier = Modifier
-                                        .size(32.dp)
+                                        .size(36.dp)
                                         .clip(CircleShape)
                                         .background(Color.White)
-                                        .border(1.dp, Color(0x407C3AED), CircleShape),
+                                        .border(1.5.dp, PurpleCore.copy(alpha = 0.3f), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
                                         "D",
                                         fontFamily = PlusJakartaSans,
                                         fontWeight = FontWeight.ExtraBold,
-                                        fontSize = 14.sp,
+                                        fontSize = 15.sp,
                                         color = PurpleCore
                                     )
                                 }
@@ -555,29 +505,12 @@ fun AdminGenerateEnrollmentScreen(
                             // Action buttons
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                horizontalArrangement = Arrangement.Center
                             ) {
-                                // Download
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(44.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .border(1.dp, PurpleBorder, RoundedCornerShape(10.dp))
-                                        .clickable { /* mock download */ },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Outlined.Download, contentDescription = null, tint = PurpleCore, modifier = Modifier.size(16.dp))
-                                        Spacer(Modifier.width(6.dp))
-                                        Text("Download", fontFamily = DMSans, fontSize = 13.sp, color = PurpleCore, fontWeight = FontWeight.SemiBold)
-                                    }
-                                }
-
                                 // Share
                                 Box(
                                     modifier = Modifier
-                                        .weight(1f)
+                                        .fillMaxWidth()
                                         .height(44.dp)
                                         .clip(RoundedCornerShape(10.dp))
                                         .background(PurpleDim)
@@ -625,7 +558,7 @@ fun AdminGenerateEnrollmentScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isDark) Color(0xFF0C0C16) else Color(0xFFF5F3FF))
+                                    .background(if (isDark) Color(0xFF14141E) else Color(0xFFF7F8FA))
                                     .border(1.5.dp, PurpleBorder, RoundedCornerShape(12.dp))
                                     .padding(vertical = 20.dp, horizontal = 16.dp),
                                 contentAlignment = Alignment.Center
@@ -703,7 +636,7 @@ fun AdminGenerateEnrollmentScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(if (isDark) Color(0xFF10101E) else Color(0xFFF5F3FF))
+                                .background(if (isDark) Color(0xFF1A1A24) else Color(0xFFF7F8FA))
                                 .border(1.dp, PurpleBorder, RoundedCornerShape(10.dp))
                                 .clickable { showPayload = !showPayload }
                                 .padding(14.dp)
@@ -738,7 +671,7 @@ fun AdminGenerateEnrollmentScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(if (isDark) Color(0xFF08080F) else Color(0xFF1A0F33))
+                                    .background(if (isDark) Color(0xFF0F0F14) else Color(0xFF1D1D21))
                                     .padding(16.dp)
                             ) {
                                 SelectionContainer {
@@ -807,7 +740,7 @@ fun AdminGenerateEnrollmentScreen(
     if (showRevokeDialog) {
         AlertDialog(
             onDismissRequest = { showRevokeDialog = false },
-            containerColor = if (isDark) Color(0xFF10101E) else Color.White,
+            containerColor = if (isDark) Color(0xFF1A1A24) else Color.White,
             shape = RoundedCornerShape(20.dp),
             title = {
                 Text(

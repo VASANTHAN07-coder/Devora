@@ -177,7 +177,7 @@ fun DeviceDetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(if (isDark) DarkBgSurface else Color(0xFFEEEBFF))
+                    .background(if (isDark) DarkBgSurface else Color(0xFFE9EEF3))
                     .border(1.dp, PurpleBorder, RoundedCornerShape(12.dp))
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -451,7 +451,7 @@ fun DeviceDetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(if (isDark) DarkBgElevated else Color(0xFFFFF0F0))
+                                .background(if (isDark) DarkBgElevated else Color(0xFFFFE8E8))
                                 .border(
                                     1.5.dp,
                                     if (wipeConfirmText == "WIPE") Danger else Danger.copy(alpha = 0.30f),
