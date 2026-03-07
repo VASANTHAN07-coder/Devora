@@ -3,7 +3,7 @@ package com.devora.devicemanager.ui.screens.splash
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,15 +21,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.devora.devicemanager.R
 import com.devora.devicemanager.ui.theme.DarkBgElevated
 import com.devora.devicemanager.ui.theme.JetBrainsMono
 import com.devora.devicemanager.ui.theme.PlusJakartaSans
@@ -71,55 +70,13 @@ fun SplashScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Canvas logo
-            Canvas(modifier = Modifier.size(100.dp)) {
-                val centerX = size.width / 2
-                val centerY = size.height / 2
-                val arcRadius = 40.dp.toPx()
-
-                // Arc: 270° sweep
-                drawArc(
-                    brush = Brush.sweepGradient(
-                        colors = listOf(PurpleCore, PurpleBright, PurpleCore)
-                    ),
-                    startAngle = -90f,
-                    sweepAngle = 270f,
-                    useCenter = false,
-                    topLeft = Offset(centerX - arcRadius, centerY - arcRadius - 5.dp.toPx()),
-                    size = Size(arcRadius * 2, arcRadius * 2),
-                    style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
-                )
-
-                // Left eye
-                drawCircle(
-                    color = Color(0xFF1E1E32),
-                    radius = 4.dp.toPx(),
-                    center = Offset(centerX - 12.dp.toPx(), centerY - 8.dp.toPx())
-                )
-
-                // Right eye
-                drawCircle(
-                    color = Color(0xFF1E1E32),
-                    radius = 4.dp.toPx(),
-                    center = Offset(centerX + 12.dp.toPx(), centerY - 8.dp.toPx())
-                )
-
-                // Suit body
-                drawRoundRect(
-                    color = Color(0xFF1E1E32),
-                    topLeft = Offset(centerX - 18.dp.toPx(), centerY + 15.dp.toPx()),
-                    size = Size(36.dp.toPx(), 20.dp.toPx()),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx())
-                )
-
-                // Tie
-                drawRoundRect(
-                    color = PurpleCore,
-                    topLeft = Offset(centerX - 3.dp.toPx(), centerY + 15.dp.toPx()),
-                    size = Size(6.dp.toPx(), 14.dp.toPx()),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
-                )
-            }
+            // Logo image
+            Image(
+                painter = painterResource(id = R.drawable.devora_nobg),
+                contentDescription = "Devora Logo",
+                modifier = Modifier.size(160.dp),
+                contentScale = ContentScale.Fit
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 

@@ -1,6 +1,6 @@
 package com.devora.devicemanager.ui.screens.login
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -48,18 +49,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.devora.devicemanager.R
 import com.devora.devicemanager.ui.components.ButtonVariant
 import com.devora.devicemanager.ui.components.DevoraButton
 import com.devora.devicemanager.ui.theme.BgElevated
@@ -116,25 +115,13 @@ fun LoginScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Theme toggle top-right
-            IconButton(
-                onClick = onThemeToggle,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp)
-            ) {
-                Icon(
-                    imageVector = if (isDark) Icons.Filled.LightMode else Icons.Filled.DarkMode,
-                    contentDescription = "Toggle theme",
-                    tint = PurpleCore
-                )
-            }
-
             // Login card centered
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = 20.dp)
+                    .imePadding()
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -162,49 +149,13 @@ fun LoginScreen(
                         modifier = Modifier.padding(28.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // 1. Canvas logo (smaller version of splash)
-                        Canvas(modifier = Modifier.size(52.dp)) {
-                            val centerX = size.width / 2
-                            val centerY = size.height / 2
-                            val arcRadius = 20.dp.toPx()
-
-                            drawArc(
-                                brush = androidx.compose.ui.graphics.Brush.sweepGradient(
-                                    colors = listOf(PurpleCore, PurpleBright, PurpleCore)
-                                ),
-                                startAngle = -90f,
-                                sweepAngle = 270f,
-                                useCenter = false,
-                                topLeft = Offset(centerX - arcRadius, centerY - arcRadius - 3.dp.toPx()),
-                                size = Size(arcRadius * 2, arcRadius * 2),
-                                style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
-                            )
-
-                            drawCircle(
-                                color = Color(0xFF1E1E32),
-                                radius = 2.dp.toPx(),
-                                center = Offset(centerX - 6.dp.toPx(), centerY - 4.dp.toPx())
-                            )
-                            drawCircle(
-                                color = Color(0xFF1E1E32),
-                                radius = 2.dp.toPx(),
-                                center = Offset(centerX + 6.dp.toPx(), centerY - 4.dp.toPx())
-                            )
-
-                            drawRoundRect(
-                                color = Color(0xFF1E1E32),
-                                topLeft = Offset(centerX - 9.dp.toPx(), centerY + 8.dp.toPx()),
-                                size = Size(18.dp.toPx(), 10.dp.toPx()),
-                                cornerRadius = CornerRadius(2.dp.toPx())
-                            )
-
-                            drawRoundRect(
-                                color = PurpleCore,
-                                topLeft = Offset(centerX - 1.5.dp.toPx(), centerY + 8.dp.toPx()),
-                                size = Size(3.dp.toPx(), 7.dp.toPx()),
-                                cornerRadius = CornerRadius(1.dp.toPx())
-                            )
-                        }
+                        // 1. Logo image
+                        Image(
+                            painter = painterResource(id = R.drawable.devora_nobg),
+                            contentDescription = "Devora Logo",
+                            modifier = Modifier.size(80.dp),
+                            contentScale = ContentScale.Fit
+                        )
 
                         Spacer(modifier = Modifier.height(12.dp))
 
@@ -540,6 +491,20 @@ fun LoginScreen(
                         color = TextMuted
                     )
                 }
+            }
+
+            // Theme toggle top-right (on top of scrollable content)
+            IconButton(
+                onClick = onThemeToggle,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(
+                    imageVector = if (isDark) Icons.Filled.LightMode else Icons.Filled.DarkMode,
+                    contentDescription = "Toggle theme",
+                    tint = PurpleCore
+                )
             }
         }
     }
