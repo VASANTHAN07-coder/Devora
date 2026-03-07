@@ -88,10 +88,10 @@ private data class Stat(
 )
 
 private val stats = listOf(
-    Stat("24", "TOTAL DEVICES", Icons.Filled.Devices, PurpleCore),
-    Stat("18", "ACTIVE NOW", Icons.Filled.CheckCircle, Success),
+    Stat("0", "TOTAL DEVICES", Icons.Filled.Devices, PurpleCore),
+    Stat("0", "ACTIVE NOW", Icons.Filled.CheckCircle, Success),
     Stat("0", "VIOLATIONS", Icons.Filled.Warning, Danger),
-    Stat("5", "PENDING", Icons.Filled.Schedule, WarningColor)
+    Stat("0", "PENDING", Icons.Filled.Schedule, WarningColor)
 )
 
 // ══════════════════════════════════════
@@ -105,13 +105,7 @@ private data class Activity(
     val color: Color
 )
 
-private val recentActivities = listOf(
-    Activity("Policy update pushed", "Galaxy S24 Ultra", "2m ago", Success),
-    Activity("New device enrollment", "Pixel Tablet", "2m ago", PurpleCore),
-    Activity("Security violation", "Manager-Laptop", "2m ago", Danger),
-    Activity("Remote wipe completed", "Stolen-Phone-01", "2m ago", WarningColor),
-    Activity("System sync finished", "Global Cloud", "2m ago", Success)
-)
+private val recentActivities = emptyList<Activity>()
 
 // ══════════════════════════════════════
 // DASHBOARD SCREEN
@@ -394,7 +388,7 @@ fun DashboardScreen(
                         Column {
                             SectionHeader(
                                 title = "DEVICE HEALTH",
-                                actionText = "24 Total",
+                                actionText = "0 Total",
                                 isDark = isDark
                             )
 
@@ -405,14 +399,14 @@ fun DashboardScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    text = "18 ONLINE",
+                                    text = "0 ONLINE",
                                     fontFamily = PlusJakartaSans,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp,
                                     color = Success
                                 )
                                 Text(
-                                    text = "6 OFFLINE",
+                                    text = "0 OFFLINE",
                                     fontFamily = PlusJakartaSans,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp,
@@ -437,7 +431,7 @@ fun DashboardScreen(
                                             brush = Brush.horizontalGradient(
                                                 colors = listOf(PurpleCore, PurpleBright)
                                             ),
-                                            size = Size(size.width * 0.75f, size.height),
+                                            size = Size(size.width * 0f, size.height),
                                             cornerRadius = CornerRadius(6.dp.toPx())
                                         )
                                     }
@@ -450,14 +444,14 @@ fun DashboardScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    text = "75%",
+                                    text = "0%",
                                     fontFamily = JetBrainsMono,
                                     fontWeight = FontWeight.Normal,
                                     fontSize = 11.sp,
                                     color = TextMuted
                                 )
                                 Text(
-                                    text = "25%",
+                                    text = "0%",
                                     fontFamily = JetBrainsMono,
                                     fontWeight = FontWeight.Normal,
                                     fontSize = 11.sp,
@@ -487,61 +481,80 @@ fun DashboardScreen(
             item {
                 Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                     DevoraCard(isDark = isDark) {
-                        Column {
-                            recentActivities.forEachIndexed { index, activity ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    // Dot
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .background(activity.color, CircleShape)
+                        if (recentActivities.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Schedule,
+                                        contentDescription = null,
+                                        tint = TextMuted.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(28.dp)
                                     )
-
-                                    Spacer(modifier = Modifier.width(12.dp))
-
-                                    // Description + device
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = activity.description,
-                                            fontFamily = DMSans,
-                                            fontWeight = FontWeight.Normal,
-                                            fontSize = 13.sp,
-                                            color = textColor
-                                        )
-                                        Text(
-                                            text = activity.device,
-                                            fontFamily = DMSans,
-                                            fontWeight = FontWeight.Normal,
-                                            fontSize = 12.sp,
-                                            color = TextMuted
-                                        )
-                                    }
-
-                                    // Time
+                                    Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                        text = activity.time,
-                                        fontFamily = JetBrainsMono,
+                                        text = "No recent activity",
+                                        fontFamily = DMSans,
                                         fontWeight = FontWeight.Normal,
-                                        fontSize = 10.sp,
+                                        fontSize = 13.sp,
                                         color = TextMuted
                                     )
                                 }
-
-                                if (index < recentActivities.size - 1) {
-                                    HorizontalDivider(
-                                        thickness = 1.dp,
-                                        color = if (isDark) {
-                                            PurpleCore.copy(alpha = 0.10f)
-                                        } else {
-                                            BgElevated
+                            }
+                        } else {
+                            Column {
+                                recentActivities.forEachIndexed { index, activity ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .background(activity.color, CircleShape)
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = activity.description,
+                                                fontFamily = DMSans,
+                                                fontWeight = FontWeight.Normal,
+                                                fontSize = 13.sp,
+                                                color = textColor
+                                            )
+                                            Text(
+                                                text = activity.device,
+                                                fontFamily = DMSans,
+                                                fontWeight = FontWeight.Normal,
+                                                fontSize = 12.sp,
+                                                color = TextMuted
+                                            )
                                         }
-                                    )
+                                        Text(
+                                            text = activity.time,
+                                            fontFamily = JetBrainsMono,
+                                            fontWeight = FontWeight.Normal,
+                                            fontSize = 10.sp,
+                                            color = TextMuted
+                                        )
+                                    }
+                                    if (index < recentActivities.size - 1) {
+                                        HorizontalDivider(
+                                            thickness = 1.dp,
+                                            color = if (isDark) {
+                                                PurpleCore.copy(alpha = 0.10f)
+                                            } else {
+                                                BgElevated
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
