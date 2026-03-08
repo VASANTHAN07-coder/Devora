@@ -14,10 +14,9 @@ import java.util.concurrent.TimeUnit
 object ApiConfig {
 
     /** Emulator → host localhost */
-    const val EMULATOR_BASE_URL = "http://10.0.2.2:8081/"
+    const val EMULATOR_BASE_URL = "https://mdm-backend-server-production.up.railway.app/"
 
-    /** Physical device → laptop WiFi IP (replace X with your actual last octet) */
-    const val PHONE_BASE_URL = "http://10.181.122.214:8081/"
+const val PHONE_BASE_URL = "https://mdm-backend-server-production.up.railway.app/"
 
     /** Active base URL — change this when switching between emulator and phone */
     var BASE_URL: String = EMULATOR_BASE_URL
