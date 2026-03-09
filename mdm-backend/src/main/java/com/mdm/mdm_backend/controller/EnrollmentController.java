@@ -19,14 +19,9 @@ public class EnrollmentController {
     private final EnrollmentService enrollmentService;
 
     @PostMapping("/enroll")
-    public ResponseEntity<?> enroll(@Valid @RequestBody EnrollRequest request) {
+    public ResponseEntity<Device> enroll(@Valid @RequestBody EnrollRequest request) {
         Device device = enrollmentService.enrollDevice(request);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of(
-                        "message", "Device enrolled successfully",
-                        "deviceId", device.getDeviceId(),
-                        "status", device.getStatus()
-                ));
+        return ResponseEntity.status(HttpStatus.CREATED).body(device);
     }
 
     @GetMapping("/devices")
