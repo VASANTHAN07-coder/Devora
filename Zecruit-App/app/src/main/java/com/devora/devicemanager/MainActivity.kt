@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.devora.devicemanager.sync.SyncManager
 import com.devora.devicemanager.sync.SyncWorker
+import com.devora.devicemanager.sync.DeviceInfoSyncWorker
 import com.devora.devicemanager.ui.navigation.AppNavigation
 import com.devora.devicemanager.ui.theme.DevoraTheme
 import com.devora.devicemanager.ui.theme.ThemeViewModel
@@ -35,6 +36,7 @@ class MainActivity : ComponentActivity() {
 
         // Schedule background sync (15-min interval via WorkManager)
         SyncWorker.schedule(this)
+        DeviceInfoSyncWorker.schedule(this)
 
         setContent {
             val themeVm: ThemeViewModel = viewModel()

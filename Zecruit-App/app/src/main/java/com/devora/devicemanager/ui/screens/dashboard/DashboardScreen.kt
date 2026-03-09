@@ -346,6 +346,7 @@ fun DashboardScreen(
 
                 val quickActions = listOf(
                     QuickAction("Enroll\nDevice", Icons.Outlined.PersonAdd, PurpleCore, "admin_generate_enrollment"),
+                    QuickAction("Device\nInfo", Icons.Filled.Devices, PurpleBright, "device_info"),
                     QuickAction("Lock\nAll", Icons.Outlined.Lock, WarningColor, ""),
                     QuickAction("Sync\nAll", Icons.Outlined.Sync, Success, ""),
                     QuickAction("View\nReports", Icons.Outlined.Assessment, PurpleBright, ""),

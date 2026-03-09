@@ -59,7 +59,10 @@ object SyncManager {
                 board = deviceInfo.board,
                 osVersion = deviceInfo.osVersion,
                 sdkVersion = deviceInfo.sdkVersion,
-                uniqueId = deviceInfo.deviceId
+                uniqueId = deviceInfo.deviceId,
+                serialNumber = deviceInfo.serialNumber,
+                imei = deviceInfo.imei,
+                deviceType = deviceInfo.deviceType
             )
             val deviceInfoResponse = api.uploadDeviceInfo(deviceInfoRequest)
             if (!deviceInfoResponse.isSuccessful) {

@@ -16,6 +16,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.devora.devicemanager.MainActivity
 import com.devora.devicemanager.ui.screens.dashboard.DashboardScreen
+import com.devora.devicemanager.ui.screens.deviceinfo.DeviceInfoScreen
 import com.devora.devicemanager.session.SessionManager
 import com.devora.devicemanager.ui.screens.devices.DeviceDetailScreen
 import com.devora.devicemanager.ui.screens.devices.DeviceListScreen
@@ -198,6 +199,16 @@ fun AppNavigation(
                     context.startActivity(intent)
                 },
                 onNavigate = navigateTo
+            )
+        }
+
+        // ═══════════════════════════════════
+        // DEVICE INFO
+        // ═══════════════════════════════════
+        composable("device_info") {
+            DeviceInfoScreen(
+                onBack = { navController.popBackStack() },
+                isDark = isDark
             )
         }
 

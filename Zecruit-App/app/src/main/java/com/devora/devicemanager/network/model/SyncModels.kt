@@ -33,7 +33,10 @@ data class SyncDeviceInfoRequest(
     @SerializedName("board") val board: String,
     @SerializedName("osVersion") val osVersion: String,
     @SerializedName("sdkVersion") val sdkVersion: Int,
-    @SerializedName("uniqueId") val uniqueId: String
+    @SerializedName("uniqueId") val uniqueId: String,
+    @SerializedName("serialNumber") val serialNumber: String? = null,
+    @SerializedName("imei") val imei: String? = null,
+    @SerializedName("deviceType") val deviceType: String? = null
 )
 
 // ══════════════════════════════════════
