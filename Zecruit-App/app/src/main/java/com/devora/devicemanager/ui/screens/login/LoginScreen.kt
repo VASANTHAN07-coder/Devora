@@ -443,38 +443,6 @@ fun LoginScreen(
 
                             Spacer(modifier = Modifier.height(20.dp))
 
-                            DevoraButton(
-                                text = "Register as Employee →",
-                                onClick = onEmployeeRegister,
-                                variant = ButtonVariant.PRIMARY,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // OR divider
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Divider(
-                                    modifier = Modifier.weight(1f),
-                                    thickness = 1.dp,
-                                    color = PurpleCore.copy(alpha = 0.15f)
-                                )
-                                Text(
-                                    text = "  OR  ",
-                                    fontFamily = DMSans,
-                                    fontSize = 11.sp,
-                                    color = TextMuted
-                                )
-                                Divider(
-                                    modifier = Modifier.weight(1f),
-                                    thickness = 1.dp,
-                                    color = PurpleCore.copy(alpha = 0.15f)
-                                )
-                            }
-
                             Spacer(modifier = Modifier.height(12.dp))
 
                             DevoraButton(
