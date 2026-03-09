@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -361,6 +362,7 @@ fun DashboardScreen(
                         Column(
                             modifier = Modifier
                                 .width(80.dp)
+                                .heightIn(min = 124.dp)
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(PurpleDim)
                                 .border(1.dp, PurpleBorder, RoundedCornerShape(16.dp))
