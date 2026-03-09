@@ -139,8 +139,8 @@ interface EnrollmentApiService {
 
 object RetrofitClient {
 
-    // Default base URL — use the physical device LAN IP to reach the backend
-    private const val DEFAULT_BASE_URL = "http://10.31.183.223:8080/"
+    // Default base URL — Railway hosted backend
+    private const val DEFAULT_BASE_URL = "https://devora-production-dd2e.up.railway.app/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
