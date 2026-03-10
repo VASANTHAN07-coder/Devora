@@ -55,5 +55,16 @@
                 <action android:name="android.app.action.LOCK_TASK_EXITING"/>
             </intent-filter>
         </receiver>
+
+        <!-- Package install/update monitor for MDM -->
+        <receiver
+            android:name=".receiver.PackageChangeReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.PACKAGE_ADDED" />
+                <action android:name="android.intent.action.PACKAGE_REPLACED" />
+                <data android:scheme="package" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

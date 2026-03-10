@@ -55,6 +55,28 @@ data class AppInventoryRequest(
     @SerializedName("isSystemApp") val isSystemApp: Boolean
 )
 
+data class AppInventoryItem(
+    @SerializedName("id") val id: Long,
+    @SerializedName("deviceId") val deviceId: String,
+    @SerializedName("appName") val appName: String,
+    @SerializedName("packageName") val packageName: String,
+    @SerializedName("versionName") val versionName: String?,
+    @SerializedName("versionCode") val versionCode: Long?,
+    @SerializedName("installSource") val installSource: String?,
+    @SerializedName("isSystemApp") val isSystemApp: Boolean?,
+    @SerializedName("collectedAt") val collectedAt: String?
+)
+
+data class NewAppNotification(
+    @SerializedName("deviceId") val deviceId: String,
+    @SerializedName("appName") val appName: String,
+    @SerializedName("packageName") val packageName: String,
+    @SerializedName("versionName") val versionName: String,
+    @SerializedName("versionCode") val versionCode: Long,
+    @SerializedName("isSystemApp") val isSystemApp: Boolean,
+    @SerializedName("action") val action: String // "INSTALLED" or "UPDATED"
+)
+
 data class DashboardStats(
     @SerializedName("totalDevices") val totalDevices: Int,
     @SerializedName("activeDevices") val activeDevices: Int,
@@ -166,6 +188,12 @@ interface EnrollmentApiService {
 
     @POST("api/app-inventory")
     suspend fun uploadAppInventory(@Body request: AppInventoryRequest): Response<Unit>
+
+    @GET("api/app-inventory/{deviceId}")
+    suspend fun getAppInventory(@Path("deviceId") deviceId: String): Response<List<AppInventoryItem>>
+
+    @POST("api/app-inventory/notify")
+    suspend fun notifyNewApp(@Body notification: NewAppNotification): Response<Unit>
 
     @GET("api/dashboard/stats")
     suspend fun getDashboardStats(): Response<DashboardStats>

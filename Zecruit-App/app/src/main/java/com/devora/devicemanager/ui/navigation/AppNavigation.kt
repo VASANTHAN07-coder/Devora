@@ -28,6 +28,8 @@ import com.devora.devicemanager.ui.screens.splash.SplashScreen
 import com.devora.devicemanager.ui.screens.register.AdminRegisterScreen
 import com.devora.devicemanager.ui.screens.reports.ViewReportsScreen
 import com.devora.devicemanager.ui.screens.policies.PoliciesScreen
+import com.devora.devicemanager.ui.screens.appinventory.DeviceAppInventoryListScreen
+import com.devora.devicemanager.ui.screens.appinventory.DeviceAppListScreen
 import com.devora.devicemanager.ui.viewmodel.AuthViewModel
 import com.devora.devicemanager.AdminReceiver
 import com.devora.devicemanager.enrollment.EnrollmentRepository
@@ -209,7 +211,20 @@ fun AppNavigation(
         // DEVICE INFO
         // ═══════════════════════════════════
         composable("device_info") {
-            DeviceInfoScreen(
+            DeviceAppInventoryListScreen(
+                onDeviceClick = { deviceId ->
+                    navController.navigate("device_app_list/$deviceId")
+                },
+                onBack = { navController.popBackStack() },
+                isDark = isDark
+            )
+        }
+
+        // Per-device app list
+        composable("device_app_list/{deviceId}") { backStackEntry ->
+            val deviceId = backStackEntry.arguments?.getString("deviceId") ?: ""
+            DeviceAppListScreen(
+                deviceId = deviceId,
                 onBack = { navController.popBackStack() },
                 isDark = isDark
             )
