@@ -2,6 +2,7 @@ package com.devora.devicemanager.ui.screens.employeedashboard
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -50,10 +51,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,6 +73,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.devora.devicemanager.collector.DeviceInfoCollector
+import com.devora.devicemanager.network.RetrofitClient
+import com.devora.devicemanager.session.SessionManager
 import com.devora.devicemanager.ui.components.DevoraCard
 import com.devora.devicemanager.ui.components.SectionHeader
 import com.devora.devicemanager.ui.components.StatusBadge
@@ -88,17 +94,65 @@ import com.devora.devicemanager.ui.theme.Success
 import com.devora.devicemanager.ui.theme.TextMuted
 import com.devora.devicemanager.ui.theme.TextPrimary
 import com.devora.devicemanager.ui.theme.Warning
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.delay
 
 @Composable
 fun EmployeeDashboardScreen(
     onSignOut: () -> Unit,
+    onEnrollmentRevoked: () -> Unit,
     isDark: Boolean,
     onThemeToggle: () -> Unit
 ) {
     val context = LocalContext.current
     val deviceInfo = remember { DeviceInfoCollector.collect(context) }
+    val lifecycleOwner = LocalLifecycleOwner.current
     var selectedNavItem by remember { mutableIntStateOf(0) }
     var showSignOutDialog by remember { mutableStateOf(false) }
+    var checkTick by remember { mutableIntStateOf(0) }
+    val latestOnEnrollmentRevoked by rememberUpdatedState(onEnrollmentRevoked)
+
+    suspend fun verifyDeviceStillActive() {
+        try {
+            val response = RetrofitClient.api.checkDevice(deviceInfo.deviceId)
+            if (response.code() == 404) {
+                SessionManager.clearDeviceEnrollment(context)
+                Toast.makeText(
+                    context,
+                    "Your device enrollment has been revoked. Please re-enroll.",
+                    Toast.LENGTH_LONG
+                ).show()
+                latestOnEnrollmentRevoked()
+            }
+        } catch (_: Exception) {
+            // Ignore transient network errors and retry on next interval.
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            verifyDeviceStillActive()
+            delay(30_000)
+        }
+    }
+
+    LaunchedEffect(checkTick) {
+        if (checkTick > 0) {
+            verifyDeviceStillActive()
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                checkTick++
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     val bgColor = if (isDark) DarkBgBase else BgBase
     val textColor = if (isDark) DarkTextPrimary else TextPrimary

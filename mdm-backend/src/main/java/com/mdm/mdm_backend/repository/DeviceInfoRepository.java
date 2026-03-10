@@ -7,4 +7,6 @@ import java.util.List;
 public interface DeviceInfoRepository extends JpaRepository<DeviceInfo, Long> {
 
     List<DeviceInfo> findByDeviceIdOrderByCollectedAtDesc(String deviceId);
+
+    void deleteByDeviceId(String deviceId);
 }

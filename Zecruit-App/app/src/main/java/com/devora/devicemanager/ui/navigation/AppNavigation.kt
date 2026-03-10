@@ -243,6 +243,13 @@ fun AppNavigation(
                         launchSingleTop = true
                     }
                 },
+                onEnrollmentRevoked = {
+                    authViewModel.signOut()
+                    navController.navigate("employee_enrollment") {
+                        popUpTo("employee_dashboard") { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
                 isDark = isDark,
                 onThemeToggle = onThemeToggle
             )

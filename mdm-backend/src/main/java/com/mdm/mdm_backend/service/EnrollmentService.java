@@ -5,12 +5,15 @@ import com.mdm.mdm_backend.model.dto.EnrollRequest;
 import com.mdm.mdm_backend.model.entity.Device;
 import com.mdm.mdm_backend.model.entity.DeviceInfo;
 import com.mdm.mdm_backend.model.entity.EnrollmentToken;
+import com.mdm.mdm_backend.repository.AppInventoryRepository;
 import com.mdm.mdm_backend.repository.DeviceInfoRepository;
 import com.mdm.mdm_backend.repository.DeviceRepository;
 import com.mdm.mdm_backend.repository.EnrollmentTokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -24,6 +27,7 @@ public class EnrollmentService {
     private final DeviceRepository deviceRepository;
     private final EnrollmentTokenRepository enrollmentTokenRepository;
     private final DeviceInfoRepository deviceInfoRepository;
+    private final AppInventoryRepository appInventoryRepository;
 
     // ════════════════════════════════════════
     // ENROLLMENT TOKEN MANAGEMENT
@@ -172,25 +176,38 @@ public class EnrollmentService {
     // DEVICE DELETION
     // ════════════════════════════════════════
 
-    public boolean deleteDevice(String deviceId) {
+    @Transactional
+    public boolean deleteDeviceWithAllData(String deviceId) {
         Optional<Device> device = deviceRepository.findByDeviceId(deviceId);
-        if (device.isPresent()) {
-            Device d = device.get();
-            
-            // Delete all associated enrollment tokens for this device
-            List<EnrollmentToken> tokensForDevice = enrollmentTokenRepository.findByDeviceId(deviceId);
-            if (!tokensForDevice.isEmpty()) {
-                enrollmentTokenRepository.deleteAll(tokensForDevice);
-                log.info("Deleted {} enrollment tokens for device: {}", tokensForDevice.size(), deviceId);
-            }
-            
-            // Delete the device
-            deviceRepository.delete(d);
-            log.info("Deleted device: {} for employee: {}", deviceId, d.getEmployeeName());
-            
-            return true;
+        if (device.isEmpty()) {
+            log.warn("Device not found for deletion: {}", deviceId);
+            return false;
         }
-        log.warn("Device not found for deletion: {}", deviceId);
-        return false;
+
+        // 1) DELETE FROM app_inventory WHERE device_id = ?
+        appInventoryRepository.deleteByDeviceId(deviceId);
+
+        // 2) DELETE FROM device_info WHERE device_id = ?
+        deviceInfoRepository.deleteByDeviceId(deviceId);
+
+        // 3) UPDATE enrollment_tokens SET status = 'REVOKED' WHERE device_id = ?
+        enrollmentTokenRepository.revokeByDeviceId(deviceId);
+
+        // 4) DELETE FROM devices WHERE device_id = ?
+        deviceRepository.delete(device.get());
+
+        log.info("Deleted device and related data for deviceId={}", deviceId);
+        return true;
+    }
+
+    public boolean checkDeviceExists(String deviceId) {
+        return deviceRepository.existsByDeviceIdAndStatus(deviceId, "ACTIVE");
+    }
+
+    public List<EnrollmentToken> getActiveEnrollmentTokens() {
+        return enrollmentTokenRepository.findByStatusAndExpiresAtAfterOrderByCreatedAtDesc(
+                "PENDING",
+                LocalDateTime.now()
+        );
     }
 }

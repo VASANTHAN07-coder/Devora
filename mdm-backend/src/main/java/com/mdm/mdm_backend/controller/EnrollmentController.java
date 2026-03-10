@@ -3,17 +3,19 @@ package com.mdm.mdm_backend.controller;
 import com.mdm.mdm_backend.model.dto.DeviceResponse;
 import com.mdm.mdm_backend.model.dto.EnrollRequest;
 import com.mdm.mdm_backend.model.dto.EnrollmentRequest;
+import com.mdm.mdm_backend.model.dto.EnrollmentTokenResponse;
 import com.mdm.mdm_backend.model.entity.Device;
 import com.mdm.mdm_backend.model.entity.EnrollmentToken;
 import com.mdm.mdm_backend.service.EnrollmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
@@ -42,7 +44,7 @@ public class EnrollmentController {
     @PostMapping("/enroll")
     public ResponseEntity<DeviceResponse> enroll(@Valid @RequestBody EnrollRequest request) {
         Device device = enrollmentService.enrollDevice(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED).body(
                 DeviceResponse.builder()
                         .id(device.getId())
                         .deviceId(device.getDeviceId())
@@ -55,24 +57,6 @@ public class EnrollmentController {
                         .status(device.getStatus())
                         .build()
         );
-    }
-
-    /**
-     * Get all devices with employee information
-     */
-    @GetMapping("/devices")
-    public ResponseEntity<List<DeviceResponse>> getAllDevices() {
-        return ResponseEntity.ok(enrollmentService.getAllDevicesAsResponse());
-    }
-
-    /**
-     * Get a specific device by deviceId
-     */
-    @GetMapping("/devices/{deviceId}")
-    public ResponseEntity<DeviceResponse> getDevice(@PathVariable String deviceId) {
-        return enrollmentService.getDeviceAsResponse(deviceId)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
     }
 
     /**
@@ -101,24 +85,21 @@ public class EnrollmentController {
         ));
     }
 
-    /**
-     * Delete a device by deviceId
-     * Removes device and all associated data (tokens, device info, app inventory)
-     * Employee must re-enroll from step 1
-     */
-    @DeleteMapping("/devices/{deviceId}")
-    public ResponseEntity<Map<String, String>> deleteDevice(@PathVariable String deviceId) {
-        boolean deleted = enrollmentService.deleteDevice(deviceId);
-        if (deleted) {
-            return ResponseEntity.ok(Map.of(
-                    "message", "Device deleted successfully",
-                    "deviceId", deviceId
-            ));
-        } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
-                    "message", "Device not found",
-                    "deviceId", deviceId
-            ));
-        }
+    @GetMapping("/enrollment/active")
+    public ResponseEntity<List<EnrollmentTokenResponse>> getActiveEnrollments() {
+        List<EnrollmentTokenResponse> responses = enrollmentService.getActiveEnrollmentTokens()
+                .stream()
+                .map(token -> EnrollmentTokenResponse.builder()
+                        .id(token.getId())
+                        .token(token.getToken())
+                        .employeeId(token.getEmployeeId())
+                        .employeeName(token.getEmployeeName())
+                        .createdAt(token.getCreatedAt())
+                        .expiresAt(token.getExpiresAt())
+                        .status(token.getStatus())
+                        .deviceId(token.getDeviceId())
+                        .build())
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
     }
 }

@@ -9,6 +9,7 @@ object SessionManager {
     private const val KEY_IS_LOGGED_IN = "is_logged_in"
     private const val KEY_ADMIN_NAME = "admin_name"
     private const val KEY_ADMIN_EMAIL = "admin_email"
+    private const val ENROLLMENT_PREF = "devora_enrollment"
 
     private fun prefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -32,5 +33,12 @@ object SessionManager {
 
     fun logout(context: Context) {
         prefs(context).edit().clear().apply()
+    }
+
+    fun clearDeviceEnrollment(context: Context) {
+        context.getSharedPreferences(ENROLLMENT_PREF, Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .apply()
     }
 }

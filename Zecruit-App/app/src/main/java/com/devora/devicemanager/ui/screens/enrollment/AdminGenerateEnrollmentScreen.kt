@@ -28,6 +28,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -102,9 +103,11 @@ import com.devora.devicemanager.ui.theme.TextPrimary
 import com.devora.devicemanager.ui.theme.Warning
 import com.devora.devicemanager.enrollment.QrProvisioningHelper
 import com.devora.devicemanager.network.GenerateEnrollmentTokenRequest
+import com.devora.devicemanager.network.EnrollmentTokenResponse
 import com.devora.devicemanager.network.RetrofitClient
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.Instant
 
 // ══════════════════════════════════════
 // DATA CLASS
@@ -122,18 +125,6 @@ data class EnrollmentSession(
     val expiresAt: Long,
     val status: String
 )
-
-private fun generateEnrollmentToken(): String {
-    val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    val parts = (1..3).map {
-        buildString {
-            repeat(4) {
-                append(alphabet.random())
-            }
-        }
-    }
-    return "DEV-${parts.joinToString("-")}"
-}
 
 // ══════════════════════════════════════
 // SCREEN
@@ -160,6 +151,9 @@ fun AdminGenerateEnrollmentScreen(
     var revokeTargetId by remember { mutableStateOf("") }
     var isRevoking by remember { mutableStateOf(false) }
     var showPayload by remember { mutableStateOf(false) }
+    var isLoadingSessions by remember { mutableStateOf(false) }
+    var sessionsError by remember { mutableStateOf<String?>(null) }
+    var sessionsRefreshTick by remember { mutableStateOf(0) }
     // Wi-Fi config for Device Owner provisioning QR
     var wifiSsid by remember { mutableStateOf("") }
     var wifiPassword by remember { mutableStateOf("") }
@@ -170,33 +164,25 @@ fun AdminGenerateEnrollmentScreen(
     val textColor = if (isDark) Color(0xFFF0F2F5) else TextPrimary
     val inputBg = if (isDark) DarkBgElevated else BgElevated
 
-    val activeEnrollments = remember {
-        mutableStateListOf(
-            EnrollmentSession(
-                id = "1",
-                deviceLabel = "Marketing-Phone-01",
-                assignedEmployee = "Ravi Kumar",
-                department = "Marketing",
-                deviceType = "Smartphone",
-                token = "DEV-A3X9-K2P7-MN4Q",
-                validityHours = 24,
-                createdAt = System.currentTimeMillis() - 3600000,
-                expiresAt = System.currentTimeMillis() + 82800000,
-                status = "PENDING"
-            ),
-            EnrollmentSession(
-                id = "2",
-                deviceLabel = "Finance-Tab-03",
-                assignedEmployee = "Priya S",
-                department = "Finance",
-                deviceType = "Tablet",
-                token = "DEV-B7KL-Q4RT-XP2M",
-                validityHours = 48,
-                createdAt = System.currentTimeMillis() - 7200000,
-                expiresAt = System.currentTimeMillis() + 165600000,
-                status = "PENDING"
-            )
-        )
+    val activeEnrollments = remember { mutableStateListOf<EnrollmentSession>() }
+
+    LaunchedEffect(sessionsRefreshTick) {
+        isLoadingSessions = true
+        sessionsError = null
+        try {
+            val response = RetrofitClient.api.getActiveEnrollments()
+            if (response.isSuccessful) {
+                val sessions = (response.body() ?: emptyList()).map { it.toEnrollmentSession() }
+                activeEnrollments.clear()
+                activeEnrollments.addAll(sessions)
+            } else {
+                sessionsError = "Failed to load active sessions (${response.code()})"
+            }
+        } catch (_: Exception) {
+            sessionsError = "Failed to load active sessions"
+        } finally {
+            isLoadingSessions = false
+        }
     }
 
     Scaffold(
@@ -431,30 +417,15 @@ fun AdminGenerateEnrollmentScreen(
                                             type = enrollType
                                         )
                                     )
-                                    val newToken = if (response.isSuccessful) {
-                                        response.body()?.token ?: generateEnrollmentToken()
-                                    } else {
-                                        generateEnrollmentToken()
+                                    if (!response.isSuccessful || response.body()?.token.isNullOrBlank()) {
+                                        snackbarHostState.showSnackbar("Failed to generate enrollment token")
+                                        isGenerating = false
+                                        return@launch
                                     }
+
+                                    val newToken = response.body()!!.token
                                     generatedToken = newToken
-                                    activeEnrollments.add(
-                                        0,
-                                        EnrollmentSession(
-                                            id = System.currentTimeMillis().toString(),
-                                            deviceLabel = deviceLabel.ifBlank {
-                                                "${selectedDeviceType.ifBlank { "Device" }}-${employeeName.trim()}"
-                                            },
-                                            assignedEmployee = employeeName.trim(),
-                                            department = selectedDepartment.ifBlank { "General" },
-                                            deviceType = selectedDeviceType.ifBlank { "Android" },
-                                            token = newToken,
-                                            validityHours = selectedValidity.removeSuffix("h").toIntOrNull() ?: 24,
-                                            createdAt = System.currentTimeMillis(),
-                                            expiresAt = System.currentTimeMillis() + ((selectedValidity.removeSuffix("h").toLongOrNull()
-                                                ?: 24L) * 60L * 60L * 1000L),
-                                            status = "PENDING"
-                                        )
-                                    )
+                                    sessionsRefreshTick += 1
                                     screenState = "GENERATED"
                                 } catch (_: Exception) {
                                     snackbarHostState.showSnackbar("Failed to generate enrollment token")
@@ -500,16 +471,74 @@ fun AdminGenerateEnrollmentScreen(
                     )
                 }
 
-                items(activeEnrollments.toList(), key = { it.id }) { session ->
-                    ActiveEnrollmentCard(
-                        session = session,
-                        isDark = isDark,
-                        textColor = textColor,
-                        onRevoke = {
-                            revokeTargetId = session.id
-                            showRevokeDialog = true
+                if (isLoadingSessions) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = PurpleCore)
                         }
-                    )
+                    }
+                } else if (activeEnrollments.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = Icons.Filled.AccessTime,
+                                    contentDescription = null,
+                                    tint = TextMuted,
+                                    modifier = Modifier.size(56.dp)
+                                )
+                                Spacer(Modifier.height(12.dp))
+                                Text(
+                                    "No Active Sessions",
+                                    fontFamily = PlusJakartaSans,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 16.sp,
+                                    color = textColor
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "Generate enrollment to create a new session",
+                                    fontFamily = DMSans,
+                                    fontSize = 12.sp,
+                                    color = TextMuted,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    items(activeEnrollments.toList(), key = { it.id }) { session ->
+                        ActiveEnrollmentCard(
+                            session = session,
+                            isDark = isDark,
+                            textColor = textColor,
+                            onRevoke = {
+                                revokeTargetId = session.id
+                                showRevokeDialog = true
+                            }
+                        )
+                    }
+                }
+
+                if (!sessionsError.isNullOrBlank()) {
+                    item {
+                        Text(
+                            text = sessionsError!!,
+                            fontFamily = DMSans,
+                            fontSize = 12.sp,
+                            color = Danger
+                        )
+                    }
                 }
 
                 item { Spacer(Modifier.height(16.dp)) }
@@ -846,16 +875,74 @@ fun AdminGenerateEnrollmentScreen(
                     )
                 }
 
-                items(activeEnrollments.toList(), key = { it.id }) { session ->
-                    ActiveEnrollmentCard(
-                        session = session,
-                        isDark = isDark,
-                        textColor = textColor,
-                        onRevoke = {
-                            revokeTargetId = session.id
-                            showRevokeDialog = true
+                if (isLoadingSessions) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = PurpleCore)
                         }
-                    )
+                    }
+                } else if (activeEnrollments.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = Icons.Filled.AccessTime,
+                                    contentDescription = null,
+                                    tint = TextMuted,
+                                    modifier = Modifier.size(56.dp)
+                                )
+                                Spacer(Modifier.height(12.dp))
+                                Text(
+                                    "No Active Sessions",
+                                    fontFamily = PlusJakartaSans,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 16.sp,
+                                    color = textColor
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "Generate enrollment to create a new session",
+                                    fontFamily = DMSans,
+                                    fontSize = 12.sp,
+                                    color = TextMuted,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    items(activeEnrollments.toList(), key = { it.id }) { session ->
+                        ActiveEnrollmentCard(
+                            session = session,
+                            isDark = isDark,
+                            textColor = textColor,
+                            onRevoke = {
+                                revokeTargetId = session.id
+                                showRevokeDialog = true
+                            }
+                        )
+                    }
+                }
+
+                if (!sessionsError.isNullOrBlank()) {
+                    item {
+                        Text(
+                            text = sessionsError!!,
+                            fontFamily = DMSans,
+                            fontSize = 12.sp,
+                            color = Danger
+                        )
+                    }
                 }
 
                 item { Spacer(Modifier.height(16.dp)) }
@@ -930,6 +1017,31 @@ fun AdminGenerateEnrollmentScreen(
             }
         )
     }
+}
+
+private fun EnrollmentTokenResponse.toEnrollmentSession(): EnrollmentSession {
+    val createdAtMillis = createdAt.parseIsoMillisOrNow()
+    val expiresAtMillis = expiresAt.parseIsoMillisOrNow()
+    val validityHours = ((expiresAtMillis - createdAtMillis) / (60L * 60L * 1000L)).toInt().coerceAtLeast(0)
+
+    return EnrollmentSession(
+        id = id.toString(),
+        deviceLabel = employeeName,
+        assignedEmployee = "$employeeName ($employeeId)",
+        department = "",
+        deviceType = "Android",
+        token = token,
+        validityHours = validityHours,
+        createdAt = createdAtMillis,
+        expiresAt = expiresAtMillis,
+        status = status
+    )
+}
+
+private fun String?.parseIsoMillisOrNow(): Long {
+    if (this.isNullOrBlank()) return System.currentTimeMillis()
+    return runCatching { Instant.parse(this).toEpochMilli() }
+        .getOrElse { System.currentTimeMillis() }
 }
 
 // ══════════════════════════════════════
@@ -1010,7 +1122,7 @@ private fun ActiveEnrollmentCard(
             Spacer(Modifier.width(8.dp))
 
             Column(horizontalAlignment = Alignment.End) {
-                StatusBadge("PENDING")
+                StatusBadge(session.status)
                 Spacer(Modifier.height(8.dp))
                 IconButton(
                     onClick = onRevoke,

@@ -120,11 +120,16 @@ fun DeviceDetailScreen(
 
     val device = if (deviceResponse != null) {
         val dr = deviceResponse!!
-        val displayName = if (!dr.employeeName.isNullOrEmpty()) dr.employeeName else (dr.deviceModel ?: "Unknown")
+        val employeeName = dr.employeeName?.takeIf { it.isNotBlank() }
+        val displayName = employeeName?.let { "$it's Device" } ?: (dr.deviceModel ?: "Unknown")
+        val subtitle = "${dr.manufacturer.orEmpty()} ${dr.deviceModel.orEmpty()}".trim().let {
+            if (it.isBlank()) "Unknown Device · ${dr.enrollmentMethod}" else "$it · ${dr.enrollmentMethod}"
+        }
         Device(
             name = displayName,
-            manufacturer = dr.enrollmentMethod,
-            model = "Enrolled: ${dr.enrolledAt.take(10)}",
+            subtitle = subtitle,
+            searchManufacturer = dr.manufacturer.orEmpty(),
+            searchModel = dr.deviceModel.orEmpty(),
             status = when (dr.status.uppercase()) {
                 "ACTIVE", "ENROLLED" -> "ONLINE"
                 else -> "OFFLINE"
@@ -137,8 +142,9 @@ fun DeviceDetailScreen(
     } else {
         Device(
             name = deviceId.ifEmpty { "Unknown Device" },
-            manufacturer = "Loading...",
-            model = "Loading...",
+            subtitle = "Loading...",
+            searchManufacturer = "",
+            searchModel = "",
             status = "PENDING",
             api = "—",
             initial = deviceId.take(1).uppercase().ifEmpty { "?" },
@@ -198,7 +204,7 @@ fun DeviceDetailScreen(
                         color = textColor
                     )
                     Text(
-                        "${device.manufacturer} · ${device.model}",
+                        device.subtitle,
                         fontFamily = DMSans,
                         fontSize = 12.sp,
                         color = TextMuted

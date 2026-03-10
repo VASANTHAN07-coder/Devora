@@ -48,6 +48,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -97,8 +99,9 @@ import kotlinx.coroutines.launch
 
 data class Device(
     val name: String,
-    val manufacturer: String,
-    val model: String,
+    val subtitle: String,
+    val searchManufacturer: String,
+    val searchModel: String,
     val status: String,
     val api: String,
     val initial: String,
@@ -130,10 +133,12 @@ fun DeviceListScreen(
     var deleteTargetDevice by remember { mutableStateOf<Device?>(null) }
     var isDeleting by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // ── Live data state ──
     var isLoading by remember { mutableStateOf(true) }
     var enrolledDevices by remember { mutableStateOf<List<Device>>(emptyList()) }
+    var fetchError by remember { mutableStateOf<String?>(null) }
     var refreshTick by remember { mutableIntStateOf(0) }
 
     // ── Fetch from API ──
@@ -143,14 +148,21 @@ fun DeviceListScreen(
             val response = RetrofitClient.api.getDeviceList()
             if (response.isSuccessful) {
                 enrolledDevices = (response.body() ?: emptyList()).map { it.toDevice() }
+                fetchError = null
                 Log.d("DeviceList", "Fetched ${enrolledDevices.size} devices")
             } else {
+                fetchError = "Failed to load devices (${response.code()})"
                 Log.e("DeviceList", "Device fetch failed: ${response.code()}")
             }
         } catch (e: Exception) {
+            fetchError = "Failed to load devices. Check connection."
             Log.e("DeviceList", "Failed to fetch devices: ${e.message}")
         }
         isLoading = false
+    }
+
+    LaunchedEffect(fetchError) {
+        fetchError?.let { snackbarHostState.showSnackbar(it) }
     }
 
     // ── Shimmer ──
@@ -167,8 +179,8 @@ fun DeviceListScreen(
 
     val filteredDevices = enrolledDevices.filter { device ->
         val matchesSearch = device.name.contains(searchQuery, ignoreCase = true) ||
-                device.manufacturer.contains(searchQuery, ignoreCase = true) ||
-                device.model.contains(searchQuery, ignoreCase = true)
+                device.searchManufacturer.contains(searchQuery, ignoreCase = true) ||
+                device.searchModel.contains(searchQuery, ignoreCase = true)
         val matchesFilter = when (selectedFilter) {
             "ALL" -> true
             "ONLINE" -> device.status == "ONLINE"
@@ -213,7 +225,8 @@ fun DeviceListScreen(
                 }
             }
         },
-        containerColor = bgColor
+        containerColor = bgColor,
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -492,7 +505,7 @@ fun DeviceListScreen(
                                             color = textColor
                                         )
                                         Text(
-                                            text = "${device.manufacturer} · ${device.model}",
+                                            text = device.subtitle,
                                             fontFamily = DMSans,
                                             fontWeight = FontWeight.Normal,
                                             fontSize = 12.sp,
@@ -564,7 +577,7 @@ fun DeviceListScreen(
             shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
             title = {
                 Text(
-                    "Delete Device?",
+                    "Delete Device",
                     fontFamily = PlusJakartaSans,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
@@ -573,7 +586,7 @@ fun DeviceListScreen(
             },
             text = {
                 Text(
-                    "This will permanently remove '${device.name}' and all associated employee data. You'll need to re-enroll from step 1.",
+                    "Are you sure? This will remove ${device.name.removeSuffix("'s Device")}'s device and all data permanently. The employee will need to re-enroll.",
                     fontFamily = DMSans,
                     fontSize = 13.sp,
                     color = TextMuted
@@ -587,14 +600,18 @@ fun DeviceListScreen(
                             try {
                                 val response = RetrofitClient.api.deleteDevice(device.deviceId)
                                 if (response.isSuccessful) {
-                                    // Remove from UI
                                     enrolledDevices = enrolledDevices.filter { it.deviceId != device.deviceId }
                                     showDeleteDialog = false
+                                    deleteTargetDevice = null
+                                    refreshTick++
+                                    snackbarHostState.showSnackbar("Device deleted successfully")
                                     Log.i("DeviceList", "Device ${device.name} deleted successfully")
                                 } else {
+                                    snackbarHostState.showSnackbar("Failed to delete device (${response.code()})")
                                     Log.e("DeviceList", "Delete failed: ${response.code()}")
                                 }
                             } catch (e: Exception) {
+                                snackbarHostState.showSnackbar("Failed to delete device")
                                 Log.e("DeviceList", "Delete error: ${e.message}")
                             } finally {
                                 isDeleting = false
@@ -613,7 +630,7 @@ fun DeviceListScreen(
                         )
                     } else {
                         Text(
-                            "Delete Permanently",
+                            "Delete",
                             fontFamily = PlusJakartaSans,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 14.sp,
@@ -645,23 +662,28 @@ private fun DeviceResponse.toDevice(): Device {
     }
     val enrolledStr = enrolledAt.take(10)
     
-    // Use employee name or fallback to device model
-    val displayName = if (!employeeName.isNullOrEmpty()) employeeName!! else (deviceModel ?: "Unknown")
-    val firstLetter = displayName.take(1).uppercase()
-    
-    // Build device subtitle: "Model · Enrollment Method"
-    val subtitleParts = buildString {
-        if (!deviceModel.isNullOrEmpty()) {
-            append(deviceModel)
-        } else {
-            append("Unknown Device")
-        }
+    val modelFallback = deviceModel?.takeIf { it.isNotBlank() } ?: deviceId.take(8)
+    val displayName = if (!employeeName.isNullOrBlank()) {
+        "${employeeName!!}'s Device"
+    } else {
+        modelFallback
     }
+
+    val manufacturerLabel = manufacturer.orEmpty().trim()
+    val modelLabel = deviceModel.orEmpty().trim()
+    val methodLabel = enrollmentMethod.replace("_", " ")
+    val subtitle = "${manufacturerLabel} ${modelLabel}".trim().let {
+        if (it.isBlank()) "Unknown Device · $methodLabel" else "$it · $methodLabel"
+    }
+
+    val initialSource = employeeName?.takeIf { it.isNotBlank() } ?: modelFallback
+    val firstLetter = initialSource.take(1).uppercase()
 
     return Device(
         name = displayName,
-        manufacturer = subtitleParts,
-        model = enrollmentMethod.replace("_", " "),
+        subtitle = subtitle,
+        searchManufacturer = manufacturer.orEmpty(),
+        searchModel = modelLabel.ifBlank { modelFallback },
         status = statusStr,
         api = "ID: ${deviceId.take(8)}",
         initial = firstLetter,

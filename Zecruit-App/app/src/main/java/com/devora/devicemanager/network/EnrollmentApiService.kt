@@ -127,6 +127,17 @@ data class GenerateEnrollmentTokenResponse(
     @SerializedName("expiresAt") val expiresAt: String?
 )
 
+data class EnrollmentTokenResponse(
+    @SerializedName("id") val id: Long,
+    @SerializedName("token") val token: String,
+    @SerializedName("employeeId") val employeeId: String,
+    @SerializedName("employeeName") val employeeName: String,
+    @SerializedName("createdAt") val createdAt: String?,
+    @SerializedName("expiresAt") val expiresAt: String?,
+    @SerializedName("status") val status: String,
+    @SerializedName("deviceId") val deviceId: String?
+)
+
 // ══════════════════════════════════════
 // RETROFIT API INTERFACE
 // ══════════════════════════════════════
@@ -166,7 +177,13 @@ interface EnrollmentApiService {
     suspend fun loginAdmin(@Body request: AdminLoginRequest): Response<AdminLoginResponse>
 
     @DELETE("api/devices/{deviceId}")
-    suspend fun deleteDevice(@Path("deviceId") deviceId: String): Response<DeleteDeviceResponse>
+    suspend fun deleteDevice(@Path("deviceId") deviceId: String): Response<Map<String, String>>
+
+    @GET("api/devices/check/{deviceId}")
+    suspend fun checkDevice(@Path("deviceId") deviceId: String): Response<DeviceResponse>
+
+    @GET("api/enrollment/active")
+    suspend fun getActiveEnrollments(): Response<List<EnrollmentTokenResponse>>
 }
 
 // ══════════════════════════════════════
