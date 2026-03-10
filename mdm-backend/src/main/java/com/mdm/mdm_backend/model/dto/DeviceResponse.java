@@ -19,6 +19,9 @@ public class DeviceResponse {
     private String enrollmentMethod;
     private String deviceModel;
     private String manufacturer;
+    private String osVersion;
+    private String sdkVersion;
+    private String serialNumber;
     private LocalDateTime enrolledAt;
     private String status;
 }
