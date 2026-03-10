@@ -46,7 +46,7 @@ object QrProvisioningHelper {
     private const val DEFAULT_ADMIN_COMPONENT =
         "com.devora.devicemanager/com.devora.devicemanager.AdminReceiver"
     private const val DEFAULT_APK_DOWNLOAD_URL =
-        "https://mdm.devora.io/downloads/devora-mdm-latest.apk"
+        "https://devora-production-dd2e.up.railway.app/downloads/devora-mdm-latest.apk"
     private const val DEFAULT_CHECKSUM =
         "gAtjMHFnP3rlJlti5lg83dqFDiA00sU5G455VBxOPJc="
 
@@ -152,6 +152,38 @@ object QrProvisioningHelper {
      */
     fun generateEnrollmentTokenQr(token: String, size: Int = 512): Bitmap? {
         val payload = token.trim().uppercase() // Send raw token string for robustness
+        return generateQrBitmap(payload, size)
+    }
+
+    /**
+     * Generates a full Device Owner provisioning QR bitmap.
+     * This QR contains the complete JSON payload that Android's setup wizard reads
+     * after factory reset (tap "Welcome" screen 6 times to trigger QR scanner).
+     *
+     * The setup wizard will:
+     *  1. Connect to Wi-Fi (if provided)
+     *  2. Download the DPC APK from the specified URL
+     *  3. Verify the APK checksum
+     *  4. Install the APK and set it as Device Owner
+     *  5. Launch the app via onProfileProvisioningComplete()
+     */
+    fun generateDeviceOwnerProvisioningQr(
+        apkDownloadUrl: String = DEFAULT_APK_DOWNLOAD_URL,
+        checksum: String = DEFAULT_CHECKSUM,
+        wifiSsid: String? = null,
+        wifiPassword: String? = null,
+        wifiSecurityType: String? = null,
+        enrollmentToken: String? = null,
+        size: Int = 512
+    ): Bitmap? {
+        val payload = buildProvisioningPayload(
+            apkDownloadUrl = apkDownloadUrl,
+            checksum = checksum,
+            wifiSsid = wifiSsid,
+            wifiPassword = wifiPassword,
+            wifiSecurityType = wifiSecurityType,
+            enrollmentToken = enrollmentToken
+        )
         return generateQrBitmap(payload, size)
     }
 

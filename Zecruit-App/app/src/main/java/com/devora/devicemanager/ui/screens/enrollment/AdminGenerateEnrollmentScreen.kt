@@ -157,6 +157,9 @@ fun AdminGenerateEnrollmentScreen(
     var showRevokeDialog by remember { mutableStateOf(false) }
     var revokeTargetId by remember { mutableStateOf("") }
     var showPayload by remember { mutableStateOf(false) }
+    // Wi-Fi config for Device Owner provisioning QR
+    var wifiSsid by remember { mutableStateOf("") }
+    var wifiPassword by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -237,6 +240,8 @@ fun AdminGenerateEnrollmentScreen(
                             selectedDepartment = ""
                             selectedDeviceType = ""
                             generatedToken = ""
+                            wifiSsid = ""
+                            wifiPassword = ""
                             showPayload = false
                         }) {
                             Icon(Icons.Outlined.Add, tint = PurpleCore, contentDescription = "New", modifier = Modifier.size(24.dp))
@@ -347,6 +352,52 @@ fun AdminGenerateEnrollmentScreen(
                                 }
                                 Spacer(Modifier.height(8.dp))
                             }
+
+                            Spacer(Modifier.height(12.dp))
+
+                            // Wi-Fi SSID (for Device Owner provisioning)
+                            Text("Wi-Fi SSID (for factory reset provisioning)", fontFamily = DMSans, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = PurpleCore)
+                            Spacer(Modifier.height(6.dp))
+                            BasicTextField(
+                                value = wifiSsid,
+                                onValueChange = { wifiSsid = it },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(inputBg)
+                                    .padding(14.dp),
+                                textStyle = TextStyle(fontFamily = DMSans, fontSize = 14.sp, color = textColor),
+                                singleLine = true,
+                                decorationBox = { inner ->
+                                    if (wifiSsid.isEmpty()) {
+                                        Text("Enter Wi-Fi network name", fontFamily = DMSans, fontSize = 14.sp, color = TextMuted)
+                                    }
+                                    inner()
+                                }
+                            )
+
+                            Spacer(Modifier.height(12.dp))
+
+                            // Wi-Fi Password
+                            Text("Wi-Fi Password", fontFamily = DMSans, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = PurpleCore)
+                            Spacer(Modifier.height(6.dp))
+                            BasicTextField(
+                                value = wifiPassword,
+                                onValueChange = { wifiPassword = it },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(inputBg)
+                                    .padding(14.dp),
+                                textStyle = TextStyle(fontFamily = DMSans, fontSize = 14.sp, color = textColor),
+                                singleLine = true,
+                                decorationBox = { inner ->
+                                    if (wifiPassword.isEmpty()) {
+                                        Text("Enter Wi-Fi password", fontFamily = DMSans, fontSize = 14.sp, color = TextMuted)
+                                    }
+                                    inner()
+                                }
+                            )
                         }
                     }
                 }
@@ -494,12 +545,16 @@ fun AdminGenerateEnrollmentScreen(
                 item {
                     DevoraCard(isDark = isDark, accentColor = PurpleCore) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            SectionHeader(title = "QR CODE FOR DEVICE SETUP", isDark = isDark)
+                            SectionHeader(title = "DEVICE OWNER PROVISIONING QR", isDark = isDark)
                             Spacer(Modifier.height(16.dp))
 
-                            // Real QR code generated with ZXing
-                            val qrBitmap: Bitmap? = remember(generatedToken) {
-                                QrProvisioningHelper.generateEnrollmentTokenQr(generatedToken, 512)
+                            // Device Owner provisioning QR with full payload for auto-install
+                            val qrBitmap: Bitmap? = remember(generatedToken, wifiSsid, wifiPassword) {
+                                QrProvisioningHelper.generateDeviceOwnerProvisioningQr(
+                                    wifiSsid = wifiSsid.ifBlank { null },
+                                    wifiPassword = wifiPassword.ifBlank { null },
+                                    enrollmentToken = generatedToken
+                                )
                             }
 
                             Box(
@@ -548,7 +603,7 @@ fun AdminGenerateEnrollmentScreen(
                             Spacer(Modifier.height(12.dp))
 
                             Text(
-                                "Scan during Android device setup wizard",
+                                "Factory reset device \u2192 tap Welcome screen 6 times \u2192\nscan this QR to auto-install & enroll",
                                 fontFamily = DMSans,
                                 fontSize = 12.sp,
                                 color = TextMuted,
@@ -720,6 +775,8 @@ fun AdminGenerateEnrollmentScreen(
                             Spacer(Modifier.height(8.dp))
 
                             val jsonPayload = QrProvisioningHelper.buildProvisioningPayload(
+                                wifiSsid = wifiSsid.ifBlank { null },
+                                wifiPassword = wifiPassword.ifBlank { null },
                                 enrollmentToken = generatedToken
                             )
 

@@ -29,6 +29,8 @@ import com.devora.devicemanager.ui.screens.register.AdminRegisterScreen
 import com.devora.devicemanager.ui.screens.reports.ViewReportsScreen
 import com.devora.devicemanager.ui.screens.policies.PoliciesScreen
 import com.devora.devicemanager.ui.viewmodel.AuthViewModel
+import com.devora.devicemanager.AdminReceiver
+import com.devora.devicemanager.enrollment.EnrollmentRepository
 
 @Composable
 fun AppNavigation(
@@ -75,7 +77,15 @@ fun AppNavigation(
             val context = LocalContext.current
             SplashScreen(
                 onSplashFinished = {
-                    val dest = if (SessionManager.isLoggedIn(context)) "dashboard" else "login"
+                    val dest = when {
+                        SessionManager.isLoggedIn(context) -> "dashboard"
+                        AdminReceiver.isDeviceOwner(context) -> {
+                            // Device was provisioned as Device Owner (e.g. after factory reset QR)
+                            val enrollRepo = EnrollmentRepository(context)
+                            if (enrollRepo.isEnrolled()) "employee_dashboard" else "employee_enrollment"
+                        }
+                        else -> "login"
+                    }
                     navController.navigate(dest) {
                         popUpTo("splash") { inclusive = true }
                     }

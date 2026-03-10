@@ -34,6 +34,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // If launched after Device Owner provisioning, mark enrollment as pending
+        if (intent?.getBooleanExtra("enrollment_complete", false) == true) {
+            Log.d("MainActivity", "Launched after Device Owner provisioning — enrollment pending")
+        }
+
         // Schedule background sync (15-min interval via WorkManager)
         SyncWorker.schedule(this)
         DeviceInfoSyncWorker.schedule(this)
