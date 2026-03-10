@@ -12,8 +12,9 @@ public class DeviceInfoRequest {
     private String model;
     private String manufacturer;
     private String osVersion;
-    private String sdkVersion;
+    private Integer sdkVersion;
     private String serialNumber;
     private String imei;
     private String deviceType;
+    private String employeeId;
 }

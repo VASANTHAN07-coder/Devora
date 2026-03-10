@@ -131,9 +131,10 @@ class EnrollmentRepository(
                         manufacturer = deviceInfo.manufacturer,
                         osVersion = deviceInfo.osVersion,
                         sdkVersion = deviceInfo.sdkVersion,
-                        serialNumber = null,
-                        imei = null,
-                        deviceType = "ANDROID"
+                        serialNumber = deviceInfo.serialNumber,
+                        imei = deviceInfo.imei,
+                        deviceType = deviceInfo.deviceType,
+                        employeeId = enrollData?.employeeId
                     )
                 )
             } catch (e: Exception) {
@@ -162,7 +163,13 @@ class EnrollmentRepository(
 
             // Step 5 — Finalize
             onStepChanged(EnrollmentStatus.FINALIZING)
-            persistEnrollmentState(deviceId, token, method)
+            persistEnrollmentState(
+                deviceId = deviceId,
+                token = token,
+                method = method,
+                employeeId = enrollData?.employeeId,
+                employeeName = enrollData?.employeeName
+            )
 
             onStepChanged(EnrollmentStatus.SUCCESS)
             return EnrollmentResult(
@@ -238,13 +245,21 @@ class EnrollmentRepository(
         }
     }
 
-    private fun persistEnrollmentState(deviceId: String, token: String, method: String) {
+    private fun persistEnrollmentState(
+        deviceId: String,
+        token: String,
+        method: String,
+        employeeId: String? = null,
+        employeeName: String? = null
+    ) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putBoolean("is_enrolled", true)
             .putString("device_id", deviceId)
             .putString("enrollment_token", token)
             .putString("enrollment_method", method)
+            .putString("employee_id", employeeId)
+            .putString("employee_name", employeeName)
             .putLong("enrolled_at", System.currentTimeMillis())
             .apply()
     }
