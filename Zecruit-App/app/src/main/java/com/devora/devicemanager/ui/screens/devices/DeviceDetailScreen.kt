@@ -120,13 +120,17 @@ fun DeviceDetailScreen(
 
     val device = if (deviceResponse != null) {
         val dr = deviceResponse!!
+        val displayName = if (!dr.employeeName.isNullOrEmpty()) dr.employeeName else (dr.deviceModel ?: "Unknown")
         Device(
-            name = dr.deviceId,
+            name = displayName,
             manufacturer = dr.enrollmentMethod,
             model = "Enrolled: ${dr.enrolledAt.take(10)}",
-            status = dr.status,
+            status = when (dr.status.uppercase()) {
+                "ACTIVE", "ENROLLED" -> "ONLINE"
+                else -> "OFFLINE"
+            },
             api = "ID: ${dr.id}",
-            initial = dr.deviceId.take(1).uppercase(),
+            initial = displayName.take(1).uppercase(),
             deviceId = dr.deviceId,
             lastSeen = "Enrolled ${dr.enrolledAt.take(10)}"
         )
@@ -244,7 +248,7 @@ fun DeviceDetailScreen(
             // ══════════════════════════════════════
 
             when (selectedTab) {
-                0 -> InfoTab(device = device, isDark = isDark, textColor = textColor)
+                0 -> InfoTab(device = device, deviceResponse = deviceResponse, isDark = isDark, textColor = textColor)
                 1 -> AppsTab(isDark = isDark, textColor = textColor)
                 2 -> ActivityTab(isDark = isDark, textColor = textColor)
                 3 -> ActionsTab(
@@ -587,21 +591,21 @@ fun DeviceDetailScreen(
 // ══════════════════════════════════════
 
 @Composable
-private fun InfoTab(device: Device, isDark: Boolean, textColor: Color) {
+private fun InfoTab(device: Device, deviceResponse: DeviceResponse?, isDark: Boolean, textColor: Color) {
     // Device Summary
     DevoraCard(accentColor = PurpleCore, isDark = isDark) {
         SectionHeader(title = "DEVICE SUMMARY", isDark = isDark)
 
         Spacer(Modifier.height(4.dp))
 
-        val infoItems = listOf(
-            "Device ID" to device.deviceId,
-            "Status" to device.status,
-            "Enrollment" to device.manufacturer,
-            "Enrolled At" to device.model,
-            "Record ID" to device.api,
-            "Last Seen" to device.lastSeen
-        )
+        val infoItems = buildList {
+            add("Device Model" to (deviceResponse?.deviceModel ?: "—"))
+            add("Manufacturer" to (deviceResponse?.manufacturer ?: "—"))
+            add("Android OS" to (deviceResponse?.osVersion?.let { "Android $it" } ?: "—"))
+            add("SDK Version" to (deviceResponse?.sdkVersion ?: "—"))
+            add("Serial Number" to (deviceResponse?.serialNumber?.ifBlank { "Restricted" } ?: "Restricted"))
+            add("Device UUID" to device.deviceId)
+        }
 
         infoItems.forEachIndexed { index, (label, value) ->
             Row(
@@ -627,6 +631,51 @@ private fun InfoTab(device: Device, isDark: Boolean, textColor: Color) {
                 )
             }
             if (index < infoItems.size - 1) {
+                HorizontalDivider(color = PurpleCore.copy(alpha = 0.08f), thickness = 1.dp)
+            }
+        }
+    }
+
+    Spacer(Modifier.height(16.dp))
+
+    // Enrollment Details
+    DevoraCard(accentColor = PurpleCore, isDark = isDark) {
+        SectionHeader(title = "ENROLLMENT DETAILS", isDark = isDark)
+
+        Spacer(Modifier.height(4.dp))
+
+        val enrollItems = buildList {
+            add("Employee" to (deviceResponse?.employeeName ?: "—"))
+            add("Employee ID" to (deviceResponse?.employeeId ?: "—"))
+            add("Enrollment" to (deviceResponse?.enrollmentMethod ?: "—"))
+            add("Enrolled At" to (deviceResponse?.enrolledAt?.take(10) ?: "—"))
+            add("Status" to (device.status))
+            add("Record ID" to (device.api))
+        }
+
+        enrollItems.forEachIndexed { index, (label, value) ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(label, fontFamily = DMSans, fontSize = 13.sp, color = TextMuted)
+                Text(
+                    value,
+                    fontFamily = JetBrainsMono,
+                    fontSize = 13.sp,
+                    color = when {
+                        value.equals("ACTIVE", ignoreCase = true) -> Success
+                        value.equals("ONLINE", ignoreCase = true) -> Success
+                        value.equals("OFFLINE", ignoreCase = true) -> TextMuted
+                        else -> textColor
+                    },
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            if (index < enrollItems.size - 1) {
                 HorizontalDivider(color = PurpleCore.copy(alpha = 0.08f), thickness = 1.dp)
             }
         }

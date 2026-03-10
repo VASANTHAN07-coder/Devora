@@ -71,7 +71,10 @@ data class DeviceResponse(
     @SerializedName("employeeId") val employeeId: String? = null,
     @SerializedName("employeeName") val employeeName: String? = null,
     @SerializedName("deviceModel") val deviceModel: String? = null,
-    @SerializedName("manufacturer") val manufacturer: String? = null
+    @SerializedName("manufacturer") val manufacturer: String? = null,
+    @SerializedName("osVersion") val osVersion: String? = null,
+    @SerializedName("sdkVersion") val sdkVersion: String? = null,
+    @SerializedName("serialNumber") val serialNumber: String? = null
 )
 
 data class TokenValidationRequest(

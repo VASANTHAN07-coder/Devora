@@ -3,7 +3,9 @@ package com.mdm.mdm_backend.service;
 import com.mdm.mdm_backend.model.dto.DeviceResponse;
 import com.mdm.mdm_backend.model.dto.EnrollRequest;
 import com.mdm.mdm_backend.model.entity.Device;
+import com.mdm.mdm_backend.model.entity.DeviceInfo;
 import com.mdm.mdm_backend.model.entity.EnrollmentToken;
+import com.mdm.mdm_backend.repository.DeviceInfoRepository;
 import com.mdm.mdm_backend.repository.DeviceRepository;
 import com.mdm.mdm_backend.repository.EnrollmentTokenRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ public class EnrollmentService {
 
     private final DeviceRepository deviceRepository;
     private final EnrollmentTokenRepository enrollmentTokenRepository;
+    private final DeviceInfoRepository deviceInfoRepository;
 
     // ════════════════════════════════════════
     // ENROLLMENT TOKEN MANAGEMENT
@@ -124,14 +127,34 @@ public class EnrollmentService {
     }
 
     private DeviceResponse convertToDeviceResponse(Device device) {
+        String model = device.getDeviceModel();
+        String manufacturer = device.getManufacturer();
+        String osVersion = null;
+        String sdkVersion = null;
+        String serialNumber = null;
+
+        // Enrich from latest device_info if fields are missing
+        List<DeviceInfo> infoList = deviceInfoRepository.findByDeviceIdOrderByCollectedAtDesc(device.getDeviceId());
+        if (!infoList.isEmpty()) {
+            DeviceInfo latest = infoList.get(0);
+            if (model == null || model.isBlank()) model = latest.getModel();
+            if (manufacturer == null || manufacturer.isBlank()) manufacturer = latest.getManufacturer();
+            osVersion = latest.getOsVersion();
+            sdkVersion = latest.getSdkVersion();
+            serialNumber = latest.getSerialNumber();
+        }
+
         return DeviceResponse.builder()
                 .id(device.getId())
                 .deviceId(device.getDeviceId())
                 .employeeId(device.getEmployeeId())
                 .employeeName(device.getEmployeeName())
                 .enrollmentMethod(device.getEnrollmentMethod())
-                .deviceModel(device.getDeviceModel())
-                .manufacturer(device.getManufacturer())
+                .deviceModel(model)
+                .manufacturer(manufacturer)
+                .osVersion(osVersion)
+                .sdkVersion(sdkVersion)
+                .serialNumber(serialNumber)
                 .enrolledAt(device.getEnrolledAt())
                 .status(device.getStatus())
                 .build();

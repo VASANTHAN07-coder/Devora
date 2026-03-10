@@ -546,21 +546,19 @@ private fun DeviceResponse.toDevice(): Device {
     val displayName = if (!employeeName.isNullOrEmpty()) employeeName!! else (deviceModel ?: "Unknown")
     val firstLetter = displayName.take(1).uppercase()
     
-    // Build device info for subtitle
-    val deviceInfo = buildString {
+    // Build device subtitle: "Model · Enrollment Method"
+    val subtitleParts = buildString {
         if (!deviceModel.isNullOrEmpty()) {
             append(deviceModel)
-        }
-        if (!manufacturer.isNullOrEmpty()) {
-            if (isNotEmpty()) append(" · ")
-            append(manufacturer)
+        } else {
+            append("Unknown Device")
         }
     }
 
     return Device(
         name = displayName,
-        manufacturer = deviceInfo.ifEmpty { "Unknown Device" },
-        model = "QR Code",
+        manufacturer = subtitleParts,
+        model = enrollmentMethod.replace("_", " "),
         status = statusStr,
         api = "ID: ${deviceId.take(8)}",
         initial = firstLetter,
