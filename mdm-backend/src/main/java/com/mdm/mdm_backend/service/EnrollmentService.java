@@ -4,10 +4,12 @@ import com.mdm.mdm_backend.model.dto.DeviceResponse;
 import com.mdm.mdm_backend.model.dto.EnrollRequest;
 import com.mdm.mdm_backend.model.entity.Device;
 import com.mdm.mdm_backend.model.entity.DeviceInfo;
+import com.mdm.mdm_backend.model.entity.Employee;
 import com.mdm.mdm_backend.model.entity.EnrollmentToken;
 import com.mdm.mdm_backend.repository.AppInventoryRepository;
 import com.mdm.mdm_backend.repository.DeviceInfoRepository;
 import com.mdm.mdm_backend.repository.DeviceRepository;
+import com.mdm.mdm_backend.repository.EmployeeRepository;
 import com.mdm.mdm_backend.repository.EnrollmentTokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +30,7 @@ public class EnrollmentService {
     private final EnrollmentTokenRepository enrollmentTokenRepository;
     private final DeviceInfoRepository deviceInfoRepository;
     private final AppInventoryRepository appInventoryRepository;
+    private final EmployeeRepository employeeRepository;
 
     // ════════════════════════════════════════
     // ENROLLMENT TOKEN MANAGEMENT
@@ -47,6 +50,7 @@ public class EnrollmentService {
                 .build();
 
         log.info("Generated enrollment token for employee: {} ({})", employeeName, employeeId);
+        upsertEmployee(employeeId, employeeName, null, null);
         return enrollmentTokenRepository.save(enrollmentToken);
     }
 
@@ -62,6 +66,7 @@ public class EnrollmentService {
             et.setDeviceId(deviceId);
             et.setUsedAt(LocalDateTime.now());
             enrollmentTokenRepository.save(et);
+            upsertEmployee(et.getEmployeeId(), et.getEmployeeName(), deviceId, null);
             log.info("Marked token {} as USED for device: {}", token, deviceId);
         }
     }
@@ -83,6 +88,15 @@ public class EnrollmentService {
                 employeeId = et.getEmployeeId();
                 // Mark token as used
                 markTokenAsUsed(request.getEnrollmentToken(), request.getDeviceId());
+            }
+        }
+
+        if ((employeeName == null || employeeName.isBlank()) || (employeeId == null || employeeId.isBlank())) {
+            Optional<Employee> employee = employeeRepository.findByDeviceId(request.getDeviceId());
+            if (employee.isPresent()) {
+                Employee existingEmployee = employee.get();
+                employeeName = existingEmployee.getEmployeeName();
+                employeeId = existingEmployee.getEmployeeId();
             }
         }
 
@@ -131,6 +145,8 @@ public class EnrollmentService {
     }
 
     private DeviceResponse convertToDeviceResponse(Device device) {
+        String employeeId = device.getEmployeeId();
+        String employeeName = device.getEmployeeName();
         String model = device.getDeviceModel();
         String manufacturer = device.getManufacturer();
         String osVersion = null;
@@ -148,11 +164,20 @@ public class EnrollmentService {
             serialNumber = latest.getSerialNumber();
         }
 
+        if ((employeeName == null || employeeName.isBlank()) || (employeeId == null || employeeId.isBlank())) {
+            Optional<Employee> employee = employeeRepository.findByDeviceId(device.getDeviceId());
+            if (employee.isPresent()) {
+                Employee mappedEmployee = employee.get();
+                employeeId = mappedEmployee.getEmployeeId();
+                employeeName = mappedEmployee.getEmployeeName();
+            }
+        }
+
         return DeviceResponse.builder()
                 .id(device.getId())
                 .deviceId(device.getDeviceId())
-                .employeeId(device.getEmployeeId())
-                .employeeName(device.getEmployeeName())
+                .employeeId(employeeId)
+                .employeeName(employeeName)
                 .enrollmentMethod(device.getEnrollmentMethod())
                 .deviceModel(model)
                 .manufacturer(manufacturer)
@@ -191,10 +216,23 @@ public class EnrollmentService {
         deviceInfoRepository.deleteByDeviceId(deviceId);
 
         // 3) UPDATE enrollment_tokens SET status = 'REVOKED' WHERE device_id = ?
-        enrollmentTokenRepository.revokeByDeviceId(deviceId);
+        List<EnrollmentToken> tokens = enrollmentTokenRepository.findByDeviceId(deviceId);
+        for (EnrollmentToken token : tokens) {
+            token.setStatus("REVOKED");
+        }
+        if (!tokens.isEmpty()) {
+            enrollmentTokenRepository.saveAll(tokens);
+        }
 
         // 4) DELETE FROM devices WHERE device_id = ?
         deviceRepository.delete(device.get());
+
+        employeeRepository.findByDeviceId(deviceId).ifPresent(employee -> {
+            employee.setDeviceId(null);
+            employee.setDeviceName(null);
+            employee.setUpdatedAt(LocalDateTime.now());
+            employeeRepository.save(employee);
+        });
 
         log.info("Deleted device and related data for deviceId={}", deviceId);
         return true;
@@ -209,5 +247,24 @@ public class EnrollmentService {
                 "PENDING",
                 LocalDateTime.now()
         );
+    }
+
+    private void upsertEmployee(String employeeId, String employeeName, String deviceId, String deviceName) {
+        if (employeeId == null || employeeId.isBlank() || employeeName == null || employeeName.isBlank()) {
+            return;
+        }
+
+        Employee employee = employeeRepository.findByEmployeeId(employeeId)
+                .orElse(Employee.builder().employeeId(employeeId).build());
+
+        employee.setEmployeeName(employeeName);
+        if (deviceId != null) {
+            employee.setDeviceId(deviceId);
+        }
+        if (deviceName != null && !deviceName.isBlank()) {
+            employee.setDeviceName(deviceName);
+        }
+        employee.setUpdatedAt(LocalDateTime.now());
+        employeeRepository.save(employee);
     }
 }

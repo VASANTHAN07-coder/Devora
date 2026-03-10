@@ -54,6 +54,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -68,6 +69,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.devora.devicemanager.network.RetrofitClient
 import com.devora.devicemanager.ui.components.DevoraCard
 import com.devora.devicemanager.ui.components.SectionHeader
 import com.devora.devicemanager.ui.theme.BgBase
@@ -82,6 +84,9 @@ import com.devora.devicemanager.ui.theme.TextMuted
 import com.devora.devicemanager.ui.theme.TextPrimary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 // ══════════════════════════════════════
 // POLICIES SCREEN
@@ -123,6 +128,24 @@ fun PoliciesScreen(
 
     var showSuccessDialog by remember { mutableStateOf(false) }
     var isApplying by remember { mutableStateOf(false) }
+    var totalDevices by remember { mutableStateOf(0) }
+    var violations by remember { mutableStateOf(0) }
+    val lastUpdated = remember {
+        SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()).format(Date())
+    }
+
+    LaunchedEffect(Unit) {
+        try {
+            val response = RetrofitClient.api.getDashboardStats()
+            if (response.isSuccessful) {
+                val stats = response.body()
+                totalDevices = stats?.totalDevices ?: 0
+                violations = stats?.violations ?: 0
+            }
+        } catch (_: Exception) {
+            // Keep defaults when server is temporarily unavailable.
+        }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -163,7 +186,7 @@ fun PoliciesScreen(
                                 color = textColor
                             )
                             Text(
-                                text = "Last modified: Today",
+                                text = "Last modified: $lastUpdated",
                                 fontFamily = PlusJakartaSans,
                                 fontWeight = FontWeight.Normal,
                                 fontSize = 11.sp,
@@ -218,14 +241,14 @@ fun PoliciesScreen(
                                 color = textColor
                             )
                             Text(
-                                text = "Applied to 3 devices • 0 violations",
+                                text = "Applied to $totalDevices devices • $violations violations",
                                 fontFamily = PlusJakartaSans,
                                 fontWeight = FontWeight.Normal,
                                 fontSize = 11.sp,
                                 color = TextMuted
                             )
                             Text(
-                                text = "Last pushed: Mar 9, 2026 10:30 AM",
+                                text = "Last pushed: $lastUpdated",
                                 fontFamily = PlusJakartaSans,
                                 fontWeight = FontWeight.Normal,
                                 fontSize = 10.sp,

@@ -59,6 +59,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devora.devicemanager.network.RetrofitClient
+import com.devora.devicemanager.network.DeviceResponse
 import com.devora.devicemanager.ui.components.DevoraCard
 import com.devora.devicemanager.ui.components.SectionHeader
 import com.devora.devicemanager.ui.theme.BgBase
@@ -123,59 +124,61 @@ fun ViewReportsScreen(
     var totalDevices by remember { mutableStateOf(0) }
     var activeDevices by remember { mutableStateOf(0) }
     var totalApps by remember { mutableStateOf(0) }
+    var devices by remember { mutableStateOf<List<DeviceResponse>>(emptyList()) }
 
     val lastUpdated = remember {
         SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()).format(Date())
     }
 
-    // Compliance metrics
+    val compliantDevices = devices.count { it.status.equals("ACTIVE", ignoreCase = true) }
+    val atRiskDevices = (totalDevices - compliantDevices).coerceAtLeast(0)
+    val withEmployeeMapped = devices.count { !it.employeeId.isNullOrBlank() && !it.employeeName.isNullOrBlank() }
+    val qrBased = devices.count { it.enrollmentMethod.equals("QR_CODE", ignoreCase = true) }
+    val tokenBased = devices.count { it.enrollmentMethod.equals("TOKEN", ignoreCase = true) }
+    val successRate = if (totalDevices == 0) 0 else ((compliantDevices * 100f) / totalDevices).toInt()
+
     val complianceMetrics = listOf(
-        ComplianceMetric("Screen Lock Enforced", 80, "8/10 devices"),
-        ComplianceMetric("Encryption Enabled", 100, "10/10 devices"),
-        ComplianceMetric("OS Up to Date", 60, "6/10 devices"),
-        ComplianceMetric("App Policy Compliant", 90, "9/10 devices"),
-        ComplianceMetric("VPN Configured", 40, "4/10 devices")
+        ComplianceMetric("Active Devices", if (totalDevices == 0) 0 else ((activeDevices * 100f) / totalDevices).toInt(), "$activeDevices/$totalDevices devices"),
+        ComplianceMetric("Employee Mapping", if (totalDevices == 0) 0 else ((withEmployeeMapped * 100f) / totalDevices).toInt(), "$withEmployeeMapped/$totalDevices devices"),
+        ComplianceMetric("Enrollment Coverage", if (totalDevices == 0) 0 else ((devices.size * 100f) / totalDevices).toInt(), "${devices.size}/$totalDevices devices")
     )
 
-    // Recent enrollments
-    val recentEnrollments = listOf(
-        EnrollmentEvent("Samsung Galaxy A52", "QR CODE", "2 hours ago"),
-        EnrollmentEvent("Xiaomi Redmi 10", "TOKEN", "1 day ago"),
-        EnrollmentEvent("Google Pixel 6", "QR CODE", "3 days ago"),
-        EnrollmentEvent("OnePlus 9", "TOKEN", "5 days ago"),
-        EnrollmentEvent("Apple iPhone 13", "QR CODE", "1 week ago")
-    )
+    val recentEnrollments = devices
+        .sortedByDescending { it.enrolledAt }
+        .take(5)
+        .map {
+            EnrollmentEvent(
+                deviceModel = listOfNotNull(it.manufacturer, it.deviceModel)
+                    .joinToString(" ")
+                    .ifBlank { it.deviceId.take(8) },
+                method = it.enrollmentMethod.replace("_", " "),
+                timeAgo = it.enrolledAt.take(10)
+            )
+        }
 
-    // Top installed apps
-    val topApps = listOf(
-        InstalledApp("Chrome", "com.android.chrome", 8, "System"),
-        InstalledApp("Gmail", "com.google.android.gm", 7, "System"),
-        InstalledApp("Microsoft Teams", "com.microsoft.teams", 5, "User"),
-        InstalledApp("Slack", "com.slack", 4, "User"),
-        InstalledApp("WhatsApp", "com.whatsapp", 3, "User")
-    )
-
-    // Security incidents
-    val incidents = listOf(
-        SecurityIncident("HIGH", "Unauthorized app detected", "2h ago"),
-        SecurityIncident("MEDIUM", "Screen lock disabled", "1d ago"),
-        SecurityIncident("LOW", "New device enrolled", "2d ago"),
-        SecurityIncident("INFO", "Policy updated", "3d ago")
-    )
+    val topApps = emptyList<InstalledApp>()
+    val incidents = emptyList<SecurityIncident>()
 
     LaunchedEffect(Unit) {
         try {
             val response = RetrofitClient.api.getDashboardStats()
+            val deviceResponse = RetrofitClient.api.getDeviceList()
             if (response.isSuccessful) {
                 val stats = response.body()
                 totalDevices = stats?.totalDevices ?: 0
                 activeDevices = stats?.activeDevices ?: 0
                 totalApps = stats?.totalApps ?: 0
-                isLoading = false
             } else {
                 Log.e("ViewReportsScreen", "Stats fetch failed: ${response.code()}")
-                isLoading = false
             }
+
+            if (deviceResponse.isSuccessful) {
+                devices = deviceResponse.body().orEmpty()
+            } else {
+                Log.e("ViewReportsScreen", "Device list fetch failed: ${deviceResponse.code()}")
+            }
+
+            isLoading = false
         } catch (e: Exception) {
             Log.e("ViewReportsScreen", "Failed to fetch reports", e)
             isLoading = false
@@ -282,14 +285,14 @@ fun ViewReportsScreen(
                                 )
                                 1 -> MetricCard(
                                     title = "Compliant Devices",
-                                    value = (totalDevices - 2).toString(),
+                                    value = compliantDevices.toString(),
                                     icon = Icons.Filled.CheckCircle,
                                     color = Success,
                                     isDark = isDark
                                 )
                                 2 -> MetricCard(
                                     title = "At Risk Devices",
-                                    value = "2",
+                                    value = atRiskDevices.toString(),
                                     icon = Icons.Filled.Warning,
                                     color = Warning,
                                     isDark = isDark
@@ -336,7 +339,7 @@ fun ViewReportsScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         EnrollmentStatBox("Total Enrolled", totalDevices.toString(), isDark)
-                        EnrollmentStatBox("Success Rate", "98.5%", isDark)
+                        EnrollmentStatBox("Success Rate", "$successRate%", isDark)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
@@ -345,8 +348,8 @@ fun ViewReportsScreen(
                             .padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        EnrollmentStatBox("QR Code", "5", isDark)
-                        EnrollmentStatBox("Token Based", "3", isDark)
+                        EnrollmentStatBox("QR Code", qrBased.toString(), isDark)
+                        EnrollmentStatBox("Token Based", tokenBased.toString(), isDark)
                     }
                 }
 
@@ -361,8 +364,14 @@ fun ViewReportsScreen(
                     )
                 }
 
-                items(recentEnrollments) { enrollment ->
-                    EnrollmentRow(enrollment = enrollment, isDark = isDark)
+                if (recentEnrollments.isEmpty()) {
+                    item {
+                        EmptyStateText(text = "No recent enrollments found", isDark = isDark)
+                    }
+                } else {
+                    items(recentEnrollments) { enrollment ->
+                        EnrollmentRow(enrollment = enrollment, isDark = isDark)
+                    }
                 }
 
                 item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -382,7 +391,7 @@ fun ViewReportsScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         AppStatBox("Total Apps Tracked", totalApps.toString(), isDark)
-                        AppStatBox("Unique Apps", "34", isDark)
+                        AppStatBox("Unique Apps", "-", isDark)
                     }
                 }
 
@@ -393,8 +402,8 @@ fun ViewReportsScreen(
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        AppStatBox("System Apps", "18", isDark)
-                        AppStatBox("User Installed", "16", isDark)
+                        AppStatBox("System Apps", "-", isDark)
+                        AppStatBox("User Installed", "-", isDark)
                     }
                 }
 
@@ -409,8 +418,14 @@ fun ViewReportsScreen(
                     )
                 }
 
-                items(topApps) { app ->
-                    AppRow(app = app, isDark = isDark)
+                if (topApps.isEmpty()) {
+                    item {
+                        EmptyStateText(text = "Top app distribution is unavailable", isDark = isDark)
+                    }
+                } else {
+                    items(topApps) { app ->
+                        AppRow(app = app, isDark = isDark)
+                    }
                 }
 
                 item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -422,8 +437,14 @@ fun ViewReportsScreen(
                     SectionHeader("Security Incidents")
                 }
 
-                items(incidents) { incident ->
-                    IncidentRow(incident = incident, isDark = isDark)
+                if (incidents.isEmpty()) {
+                    item {
+                        EmptyStateText(text = "No security incidents reported", isDark = isDark)
+                    }
+                } else {
+                    items(incidents) { incident ->
+                        IncidentRow(incident = incident, isDark = isDark)
+                    }
                 }
 
                 item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -435,27 +456,25 @@ fun ViewReportsScreen(
                     SectionHeader("Device Health Overview")
                 }
 
-                items(3) { index ->
-                    DeviceHealthCard(
-                        deviceName = when (index) {
-                            0 -> "Samsung Galaxy A52"
-                            1 -> "Xiaomi Redmi 10"
-                            else -> "Google Pixel 6"
-                        },
-                        status = if (index == 0) "ONLINE" else "OFFLINE",
-                        compliance = if (index == 0) "Good" else "At Risk",
-                        batteryLevel = when (index) {
-                            0 -> 85
-                            1 -> 45
-                            else -> 92
-                        },
-                        lastSeen = when (index) {
-                            0 -> "Now"
-                            1 -> "2 hours ago"
-                            else -> "30 minutes ago"
-                        },
-                        isDark = isDark
-                    )
+                val healthDevices = devices.take(3)
+                if (healthDevices.isEmpty()) {
+                    item {
+                        EmptyStateText(text = "No device health data available", isDark = isDark)
+                    }
+                } else {
+                    items(healthDevices) { device ->
+                        val isOnline = device.status.equals("ACTIVE", ignoreCase = true)
+                        DeviceHealthCard(
+                            deviceName = listOfNotNull(device.manufacturer, device.deviceModel)
+                                .joinToString(" ")
+                                .ifBlank { device.deviceId.take(8) },
+                            status = if (isOnline) "ONLINE" else "OFFLINE",
+                            compliance = if (isOnline) "Good" else "Needs Attention",
+                            batteryLevel = if (isOnline) 80 else 50,
+                            lastSeen = device.enrolledAt.take(10),
+                            isDark = isDark
+                        )
+                    }
                 }
 
                 item { Spacer(modifier = Modifier.height(32.dp)) }
@@ -803,6 +822,27 @@ fun IncidentRow(
                 fontWeight = FontWeight.Bold,
                 fontSize = 10.sp,
                 color = incidentColor
+            )
+        }
+    }
+}
+
+@Composable
+fun EmptyStateText(text: String, isDark: Boolean) {
+    val textColor = if (isDark) DarkTextPrimary else TextPrimary
+    DevoraCard(isDark = isDark) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = text,
+                fontFamily = PlusJakartaSans,
+                fontWeight = FontWeight.Normal,
+                fontSize = 12.sp,
+                color = textColor.copy(alpha = 0.75f)
             )
         }
     }
