@@ -101,6 +101,8 @@ import com.devora.devicemanager.ui.theme.TextMuted
 import com.devora.devicemanager.ui.theme.TextPrimary
 import com.devora.devicemanager.ui.theme.Warning
 import com.devora.devicemanager.enrollment.QrProvisioningHelper
+import com.devora.devicemanager.network.GenerateEnrollmentTokenRequest
+import com.devora.devicemanager.network.RetrofitClient
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -421,7 +423,18 @@ fun AdminGenerateEnrollmentScreen(
                             coroutineScope.launch {
                                 isGenerating = true
                                 try {
-                                    val newToken = generateEnrollmentToken()
+                                    val response = RetrofitClient.api.generateEnrollmentToken(
+                                        GenerateEnrollmentTokenRequest(
+                                            employeeId = assignedEmployee.trim(),
+                                            employeeName = employeeName.trim(),
+                                            type = enrollType
+                                        )
+                                    )
+                                    val newToken = if (response.isSuccessful) {
+                                        response.body()?.token ?: generateEnrollmentToken()
+                                    } else {
+                                        generateEnrollmentToken()
+                                    }
                                     generatedToken = newToken
                                     activeEnrollments.add(
                                         0,

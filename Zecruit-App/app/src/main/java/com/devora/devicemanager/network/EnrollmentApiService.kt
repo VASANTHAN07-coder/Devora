@@ -41,7 +41,8 @@ data class DeviceInfoRequest(
     @SerializedName("sdkVersion") val sdkVersion: Int,
     @SerializedName("serialNumber") val serialNumber: String?,
     @SerializedName("imei") val imei: String?,
-    @SerializedName("deviceType") val deviceType: String?
+    @SerializedName("deviceType") val deviceType: String?,
+    @SerializedName("employeeId") val employeeId: String? = null
 )
 
 data class AppInventoryRequest(
@@ -107,6 +108,7 @@ data class AdminRegisterResponse(
 
 data class GenerateEnrollmentTokenRequest(
     @SerializedName("employeeId") val employeeId: String,
+    @SerializedName("employeeName") val employeeName: String,
     @SerializedName("type") val type: String
 )
 
