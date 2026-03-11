@@ -7,6 +7,8 @@ import com.mdm.mdm_backend.model.entity.Admin;
 import com.mdm.mdm_backend.repository.AdminRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,6 +21,8 @@ import java.util.Map;
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
 public class AdminController {
+
+    private static final Logger log = LoggerFactory.getLogger(AdminController.class);
 
     private final AdminRepository adminRepository;
     private final PasswordEncoder passwordEncoder;  // Inject from Spring
@@ -45,11 +49,24 @@ public class AdminController {
 
     @PostMapping("/login")
     public ResponseEntity<AdminLoginResponse> login(@Valid @RequestBody AdminLoginRequest request) {
-        return adminRepository.findByEmail(request.getEmail())
-                .filter(admin -> passwordEncoder.matches(request.getPassword(), admin.getPassword()))
-                .map(admin -> ResponseEntity.ok(
-                        new AdminLoginResponse(true, admin.getName(), "Login successful")))
-                .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(new AdminLoginResponse(false, null, "Invalid email or password")));
+        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        log.info("Login attempt for email: {}", normalizedEmail);
+        return adminRepository.findByEmailIgnoreCase(normalizedEmail)
+                .map(admin -> {
+                    if (passwordEncoder.matches(request.getPassword(), admin.getPassword())) {
+                        log.info("Login successful for: {}", normalizedEmail);
+                        return ResponseEntity.ok(
+                                new AdminLoginResponse(true, admin.getName(), "Login successful"));
+                    } else {
+                        log.warn("Password mismatch for: {}", normalizedEmail);
+                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                .body(new AdminLoginResponse(false, null, "Invalid email or password"));
+                    }
+                })
+                .orElseGet(() -> {
+                    log.warn("No admin found for email: {}", normalizedEmail);
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                            .body(new AdminLoginResponse(false, null, "Invalid email or password"));
+                });
     }
 }
