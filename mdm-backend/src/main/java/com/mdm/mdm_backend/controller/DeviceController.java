@@ -1,3 +1,4 @@
+
 package com.mdm.mdm_backend.controller;
 
 import com.mdm.mdm_backend.model.dto.DeviceResponse;
@@ -295,4 +296,25 @@ public class DeviceController {
                 .map(loc -> ResponseEntity.ok((Object) loc))
                 .orElse(ResponseEntity.ok(Map.of("message", "No location data")));
     }
+    @PostMapping("/devices/{deviceId}/sign-out")
+    public ResponseEntity<?> signOutDevice(@PathVariable String deviceId) {
+        // 1. Find the device and set status to OFFLINE
+        Device device = deviceRepo.findByDeviceId(deviceId)
+                .orElseThrow(() -> new RuntimeException("Device not found"));
+        device.setStatus("OFFLINE");
+        deviceRepo.save(device);
+
+        // 2. Log the activity for the Admin Dashboard
+        activityRepo.save(DeviceActivity.builder()
+                .deviceId(deviceId)
+                .employeeName(device.getEmployeeName())
+                .activityType("SIGN_OUT")
+                .description("Employee signed out from the device")
+                .severity("INFO")
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        return ResponseEntity.ok().build();
+    }
+    
 }

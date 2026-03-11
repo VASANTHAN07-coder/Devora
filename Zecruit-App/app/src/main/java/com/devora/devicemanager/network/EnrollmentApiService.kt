@@ -318,6 +318,9 @@ interface EnrollmentApiService {
     @POST("api/devices/{deviceId}/heartbeat")
     suspend fun sendHeartbeat(@Path("deviceId") deviceId: String): Response<Unit>
 
+    @POST("api/devices/{deviceId}/sign-out")
+    suspend fun signOutDevice(@Path("deviceId") deviceId: String): Response<Unit>
+
     @GET("api/dashboard/stats")
     suspend fun getDashboardStats(): Response<DashboardStats>
 
