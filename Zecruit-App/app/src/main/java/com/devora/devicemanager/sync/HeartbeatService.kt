@@ -1,16 +1,20 @@
 package com.devora.devicemanager.sync
 
+import android.app.AppOpsManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.app.admin.DevicePolicyManager
+import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.os.Process
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.devora.devicemanager.AdminReceiver
+import com.devora.devicemanager.BlockedAppActivity
 import com.devora.devicemanager.network.RetrofitClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,9 +23,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Foreground service that sends a heartbeat to the backend every 60 seconds.
- * When the MDM app is uninstalled this service stops, and the backend scheduler
- * marks the device INACTIVE after 3 minutes of missing heartbeats.
+ * Foreground service that:
+ *  1. Sends heartbeat every 60 seconds
+ *  2. Fetches restricted apps and enforces them (Device Owner: hide, else: block via UsageStats)
+ *  3. Monitors foreground app every 2 seconds to block restricted apps (UsageStats fallback)
  */
 class HeartbeatService : Service() {
 
@@ -30,6 +35,7 @@ class HeartbeatService : Service() {
         private const val CHANNEL_ID = "devora_heartbeat_channel"
         private const val NOTIFICATION_ID = 2001
         private const val HEARTBEAT_INTERVAL_MS = 60_000L
+        private const val MONITOR_INTERVAL_MS = 2_000L
 
         fun start(context: Context) {
             val intent = Intent(context, HeartbeatService::class.java)
@@ -47,6 +53,10 @@ class HeartbeatService : Service() {
 
     private val serviceScope = CoroutineScope(Dispatchers.IO)
     private var heartbeatJob: Job? = null
+    private var monitorJob: Job? = null
+
+    // Cached restricted packages: packageName -> appName
+    private val restrictedAppsCache = mutableMapOf<String, String>()
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -65,8 +75,12 @@ class HeartbeatService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         heartbeatJob?.cancel()
+        monitorJob?.cancel()
+
+        val prefs = getSharedPreferences("devora_enrollment", Context.MODE_PRIVATE)
+
+        // Job 1: Heartbeat + restriction fetch every 60s
         heartbeatJob = serviceScope.launch {
-            val prefs = getSharedPreferences("devora_enrollment", Context.MODE_PRIVATE)
             while (true) {
                 val deviceId = prefs.getString("device_id", null)
                 if (deviceId != null) {
@@ -77,17 +91,27 @@ class HeartbeatService : Service() {
                         Log.w(TAG, "Heartbeat failed: ${e.message}")
                     }
 
-                    // Enforce app restrictions from backend
+                    // Fetch and enforce restrictions
                     enforceAppRestrictions(deviceId)
                 }
                 delay(HEARTBEAT_INTERVAL_MS)
             }
         }
+
+        // Job 2: Monitor foreground app every 2s (UsageStats fallback)
+        monitorJob = serviceScope.launch {
+            while (true) {
+                delay(MONITOR_INTERVAL_MS)
+                monitorForegroundApp()
+            }
+        }
+
         return START_STICKY
     }
 
     override fun onDestroy() {
         heartbeatJob?.cancel()
+        monitorJob?.cancel()
         super.onDestroy()
     }
 
@@ -106,50 +130,113 @@ class HeartbeatService : Service() {
     }
 
     /**
-     * Fetches restricted apps from backend and hides them via DevicePolicyManager.
-     * Only works when the app is Device Owner.
+     * Fetches restricted apps from backend.
+     * If Device Owner: uses setApplicationHidden().
+     * Always updates the local cache for UsageStats-based monitoring.
      */
     private suspend fun enforceAppRestrictions(deviceId: String) {
         try {
-            val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-            if (!dpm.isDeviceOwnerApp(packageName)) {
-                Log.d(TAG, "Not Device Owner — skipping app restriction enforcement")
-                return
-            }
-
-            val admin = AdminReceiver.getComponentName(this@HeartbeatService)
             val response = RetrofitClient.api.getAllAppRestrictions(deviceId)
             if (!response.isSuccessful) return
 
             val restrictions = response.body() ?: emptyList()
-            val restrictedPackages = mutableSetOf<String>()
+            val newRestricted = mutableMapOf<String, String>()
 
-            for (r in restrictions) {
-                if (r.restricted) {
-                    restrictedPackages.add(r.packageName)
-                    val hidden = dpm.setApplicationHidden(admin, r.packageName, true)
-                    if (hidden) {
-                        Log.d(TAG, "Hidden app: ${r.packageName}")
+            val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val isDeviceOwner = dpm.isDeviceOwnerApp(packageName)
+
+            if (isDeviceOwner) {
+                val admin = AdminReceiver.getComponentName(this@HeartbeatService)
+                for (r in restrictions) {
+                    if (r.restricted) {
+                        newRestricted[r.packageName] = r.appName ?: r.packageName
+                        val hidden = dpm.setApplicationHidden(admin, r.packageName, true)
+                        if (hidden) Log.d(TAG, "Hidden app: ${r.packageName}")
                     } else {
-                        Log.w(TAG, "Failed to hide: ${r.packageName}")
+                        dpm.setApplicationHidden(admin, r.packageName, false)
                     }
-                } else {
-                    dpm.setApplicationHidden(admin, r.packageName, false)
                 }
+
+                // Unhide previously restricted apps
+                val prefs = getSharedPreferences("devora_restrictions", Context.MODE_PRIVATE)
+                val previousRestricted = prefs.getStringSet("restricted_packages", emptySet()) ?: emptySet()
+                val toUnhide = previousRestricted - newRestricted.keys
+                for (pkg in toUnhide) {
+                    dpm.setApplicationHidden(admin, pkg, false)
+                    Log.d(TAG, "Unhidden app: $pkg")
+                }
+                prefs.edit().putStringSet("restricted_packages", newRestricted.keys.toSet()).apply()
+            } else {
+                // Not device owner — only build the cache for UsageStats monitoring
+                for (r in restrictions) {
+                    if (r.restricted) {
+                        newRestricted[r.packageName] = r.appName ?: r.packageName
+                    }
+                }
+                Log.d(TAG, "Not Device Owner — using UsageStats monitoring for ${newRestricted.size} restricted apps")
             }
 
-            // Unhide previously restricted apps that are no longer in the list
-            val prefs = getSharedPreferences("devora_restrictions", Context.MODE_PRIVATE)
-            val previousRestricted = prefs.getStringSet("restricted_packages", emptySet()) ?: emptySet()
-            val toUnhide = previousRestricted - restrictedPackages
-            for (pkg in toUnhide) {
-                dpm.setApplicationHidden(admin, pkg, false)
-                Log.d(TAG, "Unhidden app: $pkg")
+            // Update cache for the monitoring loop
+            synchronized(restrictedAppsCache) {
+                restrictedAppsCache.clear()
+                restrictedAppsCache.putAll(newRestricted)
             }
-
-            prefs.edit().putStringSet("restricted_packages", restrictedPackages).apply()
         } catch (e: Exception) {
             Log.w(TAG, "App restriction enforcement failed: ${e.message}")
+        }
+    }
+
+    /**
+     * Checks the current foreground app via UsageStatsManager.
+     * If it's a restricted app, launches the BlockedAppActivity to cover it.
+     */
+    private fun monitorForegroundApp() {
+        val cached: Map<String, String>
+        synchronized(restrictedAppsCache) {
+            if (restrictedAppsCache.isEmpty()) return
+            cached = restrictedAppsCache.toMap()
+        }
+
+        if (!hasUsageStatsPermission()) return
+
+        val foregroundPkg = getForegroundPackage() ?: return
+        if (foregroundPkg == packageName) return // Don't block ourselves
+        if (foregroundPkg == "com.devora.devicemanager") return
+
+        val appName = cached[foregroundPkg]
+        if (appName != null) {
+            Log.d(TAG, "Restricted app in foreground: $foregroundPkg — blocking")
+            BlockedAppActivity.launch(this@HeartbeatService, appName, foregroundPkg)
+        }
+    }
+
+    private fun getForegroundPackage(): String? {
+        return try {
+            val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+            val now = System.currentTimeMillis()
+            val stats = usm.queryUsageStats(
+                UsageStatsManager.INTERVAL_BEST,
+                now - 5_000,
+                now
+            )
+            stats?.maxByOrNull { it.lastTimeUsed }?.packageName
+        } catch (e: Exception) {
+            Log.d(TAG, "UsageStats query failed: ${e.message}")
+            null
+        }
+    }
+
+    private fun hasUsageStatsPermission(): Boolean {
+        return try {
+            val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+            val mode = appOps.checkOpNoThrow(
+                AppOpsManager.OPSTR_GET_USAGE_STATS,
+                Process.myUid(),
+                packageName
+            )
+            mode == AppOpsManager.MODE_ALLOWED
+        } catch (_: Exception) {
+            false
         }
     }
 }

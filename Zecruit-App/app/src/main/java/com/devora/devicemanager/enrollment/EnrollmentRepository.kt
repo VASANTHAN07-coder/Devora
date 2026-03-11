@@ -4,12 +4,13 @@ import android.content.Context
 import android.util.Log
 import com.devora.devicemanager.collector.DeviceInfoCollector
 import com.devora.devicemanager.collector.AppInventoryCollector
-import com.devora.devicemanager.network.AppInventoryRequest
 import com.devora.devicemanager.network.DeviceInfoRequest
 import com.devora.devicemanager.network.EnrollRequest
 import com.devora.devicemanager.network.EnrollResponse
 import com.devora.devicemanager.network.EnrollmentApiService
 import com.devora.devicemanager.network.RetrofitClient
+import com.devora.devicemanager.network.model.AppInfoDto
+import com.devora.devicemanager.network.model.BulkAppInventoryRequest
 
 /**
  * Enrollment states tracked during the enrollment flow.
@@ -141,23 +142,26 @@ class EnrollmentRepository(
                 Log.w(TAG, "Device info upload failed (non-fatal): ${e.message}")
             }
 
-            // Step 4 — Upload app inventory
+            // Step 4 — Upload app inventory (bulk)
             onStepChanged(EnrollmentStatus.CONFIGURING_DEVICE_OWNER)
             try {
                 val apps = AppInventoryCollector.collect(context)
-                for (app in apps.take(50)) { // Limit to avoid overwhelming the server
-                    api.uploadAppInventory(
-                        AppInventoryRequest(
-                            deviceId = deviceId,
-                            appName = app.appName,
-                            packageName = app.packageName,
-                            versionName = app.versionName,
-                            versionCode = app.versionCode,
-                            installSource = app.installSource,
-                            isSystemApp = app.isSystemApp
-                        )
+                val appDtos = apps.map { app ->
+                    AppInfoDto(
+                        appName = app.appName,
+                        packageName = app.packageName,
+                        versionName = app.versionName,
+                        versionCode = app.versionCode,
+                        installSource = app.installSource,
+                        isSystemApp = app.isSystemApp,
+                        iconBase64 = app.iconBase64
                     )
                 }
+                val bulkRequest = BulkAppInventoryRequest(
+                    deviceId = deviceId,
+                    apps = appDtos
+                )
+                com.devora.devicemanager.network.ApiConfig.syncApi.uploadAppInventory(bulkRequest)
             } catch (e: Exception) {
                 Log.w(TAG, "App inventory upload failed (non-fatal): ${e.message}")
             }

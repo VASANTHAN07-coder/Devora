@@ -32,6 +32,7 @@ public class AppInventoryService {
                         .versionCode(dto.getVersionCode())
                         .installSource(dto.getInstallSource())
                         .isSystemApp(dto.getIsSystemApp())
+                        .iconBase64(dto.getIconBase64())
                         .collectedAt(LocalDateTime.now())
                         .build())
                 .collect(Collectors.toList());

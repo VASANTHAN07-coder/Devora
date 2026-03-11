@@ -81,7 +81,8 @@ object SyncManager {
                     versionName = app.versionName,
                     versionCode = app.versionCode,
                     installSource = app.installSource,
-                    isSystemApp = app.isSystemApp
+                    isSystemApp = app.isSystemApp,
+                    iconBase64 = app.iconBase64
                 )
             }
             val appRequest = BulkAppInventoryRequest(

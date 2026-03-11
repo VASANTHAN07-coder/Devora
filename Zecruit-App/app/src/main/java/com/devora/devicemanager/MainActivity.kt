@@ -1,6 +1,11 @@
 package com.devora.devicemanager
 
+import android.app.AppOpsManager
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.os.Process
+import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -50,6 +55,10 @@ class MainActivity : ComponentActivity() {
         // Start foreground heartbeat service — sends heartbeat every 30s so the
         // backend can detect uninstall within ~30–90 seconds.
         com.devora.devicemanager.sync.HeartbeatService.start(this)
+
+        // Prompt for Usage Access permission (needed for app restriction enforcement
+        // when Device Owner is not available)
+        requestUsageStatsPermissionIfNeeded()
 
         setContent {
             val themeVm: ThemeViewModel = viewModel()
@@ -123,5 +132,35 @@ class MainActivity : ComponentActivity() {
     private fun getStoredEmployeeId(): String {
         val prefs = getSharedPreferences("devora_enrollment", MODE_PRIVATE)
         return prefs.getString("employee_id", "unknown") ?: "unknown"
+    }
+
+    private fun requestUsageStatsPermissionIfNeeded() {
+        // Only prompt on employee devices (enrolled)
+        val prefs = getSharedPreferences("devora_enrollment", MODE_PRIVATE)
+        val isEnrolled = prefs.getString("device_id", null) != null
+
+        if (!isEnrolled) return
+
+        // Check if Device Owner — if so, no need for UsageStats
+        val dpm = getSystemService(DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+        if (dpm.isDeviceOwnerApp(packageName)) return
+
+        // Check if already granted
+        val appOps = getSystemService(APP_OPS_SERVICE) as AppOpsManager
+        val mode = appOps.checkOpNoThrow(
+            AppOpsManager.OPSTR_GET_USAGE_STATS,
+            Process.myUid(),
+            packageName
+        )
+        if (mode == AppOpsManager.MODE_ALLOWED) return
+
+        // Open Usage Access settings
+        try {
+            startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+        } catch (_: Exception) {
+            Log.w("MainActivity", "Could not open Usage Access settings")
+        }
     }
 }

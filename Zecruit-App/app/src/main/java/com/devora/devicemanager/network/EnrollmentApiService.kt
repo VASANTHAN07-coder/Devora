@@ -66,6 +66,7 @@ data class AppInventoryItem(
     @SerializedName("versionCode") val versionCode: Long?,
     @SerializedName("installSource") val installSource: String?,
     @SerializedName("isSystemApp") val isSystemApp: Boolean?,
+    @SerializedName("iconBase64") val iconBase64: String?,
     @SerializedName("collectedAt") val collectedAt: String?
 )
 

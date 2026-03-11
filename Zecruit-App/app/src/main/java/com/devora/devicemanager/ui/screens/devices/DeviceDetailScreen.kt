@@ -1,7 +1,10 @@
 package com.devora.devicemanager.ui.screens.devices
 
+import android.graphics.BitmapFactory
+import android.util.Base64
 import android.util.Log
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -62,7 +65,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -981,19 +986,42 @@ private fun AppsTab(deviceId: String, isDark: Boolean, textColor: Color) {
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(if (isRestricted) Danger.copy(alpha = 0.10f) else PurpleDim),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            if (isRestricted) Icons.Outlined.Block else Icons.Outlined.Apps,
-                            contentDescription = null,
-                            tint = if (isRestricted) Danger else PurpleCore,
-                            modifier = Modifier.size(18.dp)
+                    // Real app icon from base64 or fallback
+                    val inlineIconBitmap = remember(app.iconBase64) {
+                        if (!app.iconBase64.isNullOrEmpty()) {
+                            try {
+                                val bytes = Base64.decode(app.iconBase64, Base64.DEFAULT)
+                                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                            } catch (_: Exception) { null }
+                        } else null
+                    }
+
+                    if (inlineIconBitmap != null) {
+                        Image(
+                            bitmap = inlineIconBitmap.asImageBitmap(),
+                            contentDescription = app.appName,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            alpha = if (isRestricted) 0.4f else 1f
                         )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isRestricted) Danger.copy(alpha = 0.10f) else PurpleDim),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                app.appName.take(1).uppercase(),
+                                fontFamily = PlusJakartaSans,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = if (isRestricted) Danger else PurpleCore
+                            )
+                        }
                     }
                     Spacer(Modifier.width(12.dp))
                     Column {
@@ -1084,23 +1112,70 @@ private fun AppsTab(deviceId: String, isDark: Boolean, textColor: Color) {
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (isAppRestricted) Danger.copy(alpha = 0.10f)
-                                        else PurpleCore.copy(alpha = 0.10f)
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    if (isAppRestricted) Icons.Outlined.Block
-                                    else Icons.Outlined.Apps,
-                                    contentDescription = null,
-                                    tint = if (isAppRestricted) Danger else PurpleCore,
-                                    modifier = Modifier.size(22.dp)
-                                )
+                            // Real app icon from base64 or fallback
+                            val dialogIconBitmap = remember(app.iconBase64) {
+                                if (!app.iconBase64.isNullOrEmpty()) {
+                                    try {
+                                        val bytes = Base64.decode(app.iconBase64, Base64.DEFAULT)
+                                        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                    } catch (_: Exception) { null }
+                                } else null
+                            }
+
+                            if (dialogIconBitmap != null) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(
+                                            if (isAppRestricted) Danger.copy(alpha = 0.08f)
+                                            else Color.Transparent
+                                        )
+                                ) {
+                                    Image(
+                                        bitmap = dialogIconBitmap.asImageBitmap(),
+                                        contentDescription = app.appName,
+                                        contentScale = ContentScale.Fit,
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(RoundedCornerShape(10.dp)),
+                                        alpha = if (isAppRestricted) 0.4f else 1f
+                                    )
+                                    if (isAppRestricted) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(44.dp)
+                                                .clip(RoundedCornerShape(10.dp)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                Icons.Outlined.Block,
+                                                contentDescription = null,
+                                                tint = Danger,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (isAppRestricted) Danger.copy(alpha = 0.10f)
+                                            else PurpleCore.copy(alpha = 0.10f)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        if (isAppRestricted) Icons.Outlined.Block
+                                        else Icons.Outlined.Apps,
+                                        contentDescription = null,
+                                        tint = if (isAppRestricted) Danger else PurpleCore,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
                             }
                             Spacer(Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {

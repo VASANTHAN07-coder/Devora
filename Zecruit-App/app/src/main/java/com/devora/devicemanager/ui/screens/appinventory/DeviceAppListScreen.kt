@@ -1,6 +1,9 @@
 package com.devora.devicemanager.ui.screens.appinventory
 
+import android.graphics.BitmapFactory
+import android.util.Base64
 import android.util.Log
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,6 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -323,24 +328,80 @@ fun DeviceAppListScreen(
                                 .padding(vertical = 10.dp, horizontal = 2.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // App icon placeholder
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (isRestricted) Danger.copy(alpha = 0.10f)
-                                        else PurpleDim
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    if (isRestricted) Icons.Outlined.Block
-                                    else Icons.Outlined.Apps,
-                                    contentDescription = null,
-                                    tint = if (isRestricted) Danger else PurpleCore,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                            // App icon — real icon from base64 or fallback
+                            val iconBitmap = remember(app.iconBase64) {
+                                if (!app.iconBase64.isNullOrEmpty()) {
+                                    try {
+                                        val bytes = Base64.decode(app.iconBase64, Base64.DEFAULT)
+                                        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                    } catch (_: Exception) { null }
+                                } else null
+                            }
+
+                            if (iconBitmap != null) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(
+                                            if (isRestricted) Danger.copy(alpha = 0.08f)
+                                            else Color.Transparent
+                                        )
+                                ) {
+                                    Image(
+                                        bitmap = iconBitmap.asImageBitmap(),
+                                        contentDescription = app.appName,
+                                        contentScale = ContentScale.Fit,
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(RoundedCornerShape(10.dp)),
+                                        alpha = if (isRestricted) 0.4f else 1f
+                                    )
+                                    if (isRestricted) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(RoundedCornerShape(10.dp)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                Icons.Outlined.Block,
+                                                contentDescription = null,
+                                                tint = Danger,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Fallback: letter initial icon
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(
+                                            if (isRestricted) Danger.copy(alpha = 0.10f)
+                                            else PurpleDim
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (isRestricted) {
+                                        Icon(
+                                            Icons.Outlined.Block,
+                                            contentDescription = null,
+                                            tint = Danger,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    } else {
+                                        Text(
+                                            app.appName.take(1).uppercase(),
+                                            fontFamily = PlusJakartaSans,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 16.sp,
+                                            color = PurpleCore
+                                        )
+                                    }
+                                }
                             }
 
                             Spacer(Modifier.width(12.dp))

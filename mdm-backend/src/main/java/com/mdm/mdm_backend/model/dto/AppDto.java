@@ -10,4 +10,5 @@ public class AppDto {
     private Long versionCode;
     private String installSource;
     private Boolean isSystemApp;
+    private String iconBase64;
 }

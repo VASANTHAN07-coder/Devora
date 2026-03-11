@@ -14,6 +14,10 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
+    <!-- Usage stats for monitoring foreground apps (restriction enforcement fallback) -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+
     <!-- Camera feature — required but not mandatory for install -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
@@ -43,6 +47,15 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <!-- Blocked app overlay — shown when a restricted app is detected -->
+        <activity
+            android:name=".BlockedAppActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DeviceManager"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:launchMode="singleTask" />
 
         <!-- Device Admin / Device Owner receiver -->
         <receiver

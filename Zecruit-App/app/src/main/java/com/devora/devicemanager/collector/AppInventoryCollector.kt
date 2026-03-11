@@ -4,8 +4,13 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
 import android.os.Build
+import android.util.Base64
 import android.util.Log
+import java.io.ByteArrayOutputStream
 
 data class AppInfo(
     val appName: String,
@@ -13,7 +18,8 @@ data class AppInfo(
     val versionName: String,
     val versionCode: Long,
     val isSystemApp: Boolean,
-    val installSource: String
+    val installSource: String,
+    val iconBase64: String
 )
 
 object AppInventoryCollector {
@@ -48,6 +54,7 @@ object AppInventoryCollector {
         } ?: false
 
         val installer = getInstallerPackage(pm, packageName.orEmpty())
+        val icon = getAppIconBase64(pm, packageName.orEmpty())
 
         return AppInfo(
             appName = appLabel,
@@ -55,8 +62,36 @@ object AppInventoryCollector {
             versionName = versionName.orEmpty(),
             versionCode = versionCode,
             isSystemApp = isSystem,
-            installSource = installer
+            installSource = installer,
+            iconBase64 = icon
         )
+    }
+
+    private fun getAppIconBase64(pm: PackageManager, pkg: String): String {
+        return try {
+            val drawable = pm.getApplicationIcon(pkg)
+            val bitmap = if (drawable is BitmapDrawable) {
+                drawable.bitmap
+            } else {
+                val bmp = Bitmap.createBitmap(48, 48, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(bmp)
+                drawable.setBounds(0, 0, 48, 48)
+                drawable.draw(canvas)
+                bmp
+            }
+            val scaled = Bitmap.createScaledBitmap(bitmap, 48, 48, true)
+            val stream = ByteArrayOutputStream()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                scaled.compress(Bitmap.CompressFormat.WEBP_LOSSY, 60, stream)
+            } else {
+                @Suppress("DEPRECATION")
+                scaled.compress(Bitmap.CompressFormat.WEBP, 60, stream)
+            }
+            Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
+        } catch (e: Exception) {
+            Log.d(TAG, "Could not get icon for $pkg: ${e.message}")
+            ""
+        }
     }
 
     private fun getInstallerPackage(pm: PackageManager, pkg: String): String {

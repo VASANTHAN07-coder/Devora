@@ -49,7 +49,8 @@ data class AppInfoDto(
     @SerializedName("versionName") val versionName: String,
     @SerializedName("versionCode") val versionCode: Long,
     @SerializedName("installSource") val installSource: String,
-    @SerializedName("isSystemApp") val isSystemApp: Boolean
+    @SerializedName("isSystemApp") val isSystemApp: Boolean,
+    @SerializedName("iconBase64") val iconBase64: String
 )
 
 data class BulkAppInventoryRequest(

@@ -23,5 +23,8 @@ public class AppInventory {
     private String installSource;
     private Boolean isSystemApp;
 
+    @Column(columnDefinition = "TEXT")
+    private String iconBase64;
+
     private LocalDateTime collectedAt;
 }
