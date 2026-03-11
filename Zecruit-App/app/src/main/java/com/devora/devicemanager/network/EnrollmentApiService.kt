@@ -210,6 +210,9 @@ interface EnrollmentApiService {
     @GET("api/devices/check/{deviceId}")
     suspend fun checkDevice(@Path("deviceId") deviceId: String): Response<DeviceResponse>
 
+    @POST("api/devices/{deviceId}/heartbeat")
+    suspend fun sendHeartbeat(@Path("deviceId") deviceId: String): Response<Unit>
+
     @GET("api/enrollment/active")
     suspend fun getActiveEnrollments(): Response<List<EnrollmentTokenResponse>>
 }

@@ -24,6 +24,8 @@ public class Device {
 
     private String status;
 
+    private LocalDateTime lastHeartbeat;
+
     // Employee Information
     private String employeeId;
     private String employeeName;
