@@ -106,6 +106,11 @@ import com.devora.devicemanager.ui.theme.TextPrimary
 import com.devora.devicemanager.ui.theme.Warning
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -143,26 +148,44 @@ fun EmployeeDashboardScreen(
     var activities by remember { mutableStateOf<List<UIActivity>>(emptyList()) }
 
     fun getTimeAgo(timestamp: Long): String {
-        val diff = System.currentTimeMillis() - timestamp
+        val diff = (System.currentTimeMillis() - timestamp).coerceAtLeast(0L)
         return when {
-            diff < 60_000 -> "Just now"
-            diff < 3_600_000 -> "${diff / 60_000} min ago"
-            diff < 86_400_000 -> "${diff / 3_600_000} hr ago"
-            else -> "${diff / 86_400_000} day ago"
+            diff < 60_000L -> "Just now"
+            diff < 3_600_000L -> {
+                val mins = diff / 60_000L
+                if (mins == 1L) "1 min ago" else "$mins mins ago"
+            }
+            diff < 86_400_000L -> {
+                val hours = diff / 3_600_000L
+                if (hours == 1L) "1 hr ago" else "$hours hrs ago"
+            }
+            else -> {
+                val days = diff / 86_400_000L
+                if (days == 1L) "1 day ago" else "$days days ago"
+            }
         }
     }
 
-    fun parseISO(dateStr: String?): Long {
-        if (dateStr == null) return System.currentTimeMillis()
+    fun parseISO(dateStr: String?): Long? {
+        if (dateStr.isNullOrBlank()) return null
+
         return try {
-            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.getDefault())
-            sdf.parse(dateStr)?.time ?: System.currentTimeMillis()
-        } catch (e: Exception) {
+            Instant.parse(dateStr).toEpochMilli()
+        } catch (_: DateTimeParseException) {
             try {
-                val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-                sdf.parse(dateStr)?.time ?: System.currentTimeMillis()
-            } catch (e2: Exception) {
-                System.currentTimeMillis()
+                DateTimeFormatter.ISO_OFFSET_DATE_TIME
+                    .parse(dateStr, Instant::from)
+                    .toEpochMilli()
+            } catch (_: DateTimeParseException) {
+                try {
+                    val localDateTime = LocalDateTime.parse(
+                        dateStr,
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss[.SSS]")
+                    )
+                    localDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                } catch (_: Exception) {
+                    null
+                }
             }
         }
     }
@@ -184,7 +207,10 @@ fun EmployeeDashboardScreen(
                         "LOCATION_UPDATED" -> "📍"
                         else -> "ℹ️"
                     }
-                    list.add(UIActivity(icon, res.description ?: "", parseISO(res.createdAt), res.createdAt))
+                    val parsedTime = parseISO(res.createdAt)
+                    if (parsedTime != null) {
+                        list.add(UIActivity(icon, res.description ?: "", parsedTime, res.createdAt))
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -217,7 +243,9 @@ fun EmployeeDashboardScreen(
 
         } catch (e: Exception) { }
 
-        activities = list.sortedByDescending { it.timestamp }.take(10)
+        activities = list
+            .sortedWith(compareByDescending<UIActivity> { it.timestamp }.thenBy { it.description })
+            .take(10)
     }
 
     suspend fun verifyDeviceStillActive() {
