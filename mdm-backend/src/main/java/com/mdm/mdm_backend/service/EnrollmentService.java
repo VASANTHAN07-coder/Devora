@@ -56,7 +56,7 @@ public class EnrollmentService {
 
     public EnrollmentToken generateEnrollmentToken(String token, String employeeId, String employeeName) {
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expiresAt = now.plusHours(24);
+        LocalDateTime expiresAt = now.plusHours(6);
 
         EnrollmentToken enrollmentToken = EnrollmentToken.builder()
                 .token(token)

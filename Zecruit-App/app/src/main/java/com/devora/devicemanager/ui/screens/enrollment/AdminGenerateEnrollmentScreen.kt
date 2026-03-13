@@ -61,10 +61,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -126,6 +128,42 @@ data class EnrollmentSession(
     val status: String
 )
 
+private fun getExpiryDisplay(
+    expiresAt: Long,
+    currentTick: Long
+): Triple<String, Color, Boolean> {
+    val diff = expiresAt - currentTick
+    return if (diff <= 0) {
+        val expiredAgo = currentTick - expiresAt
+        val expiredText = when {
+            expiredAgo < 3_600_000L -> "Expired ${expiredAgo / 60_000L}m ago"
+            expiredAgo < 86_400_000L ->
+                "Expired ${expiredAgo / 3_600_000L}h " +
+                    "${(expiredAgo % 3_600_000L) / 60_000L}m ago"
+            else -> "Expired ${expiredAgo / 86_400_000L}d ago"
+        }
+        Triple(expiredText, Color(0xFFF44336), false)
+    } else {
+        val hours = diff / 3_600_000L
+        val minutes = (diff % 3_600_000L) / 60_000L
+        val seconds = (diff % 60_000L) / 1_000L
+
+        val countdownText = when {
+            hours > 0 -> "Expires in ${hours}h ${minutes}m ${seconds}s"
+            minutes > 0 -> "⚠️ Expires in ${minutes}m ${seconds}s"
+            else -> "⚠️ Expires in ${seconds}s"
+        }
+
+        val color = when {
+            diff < 1_800_000L -> Color(0xFFF44336)
+            diff < 3_600_000L -> Color(0xFFFF9800)
+            else -> Color(0xFF4CAF50)
+        }
+        val isWarning = diff < 1_800_000L
+        Triple(countdownText, color, isWarning)
+    }
+}
+
 // ══════════════════════════════════════
 // SCREEN
 // ══════════════════════════════════════
@@ -154,6 +192,16 @@ fun AdminGenerateEnrollmentScreen(
     var isLoadingSessions by remember { mutableStateOf(false) }
     var sessionsError by remember { mutableStateOf<String?>(null) }
     var sessionsRefreshTick by remember { mutableStateOf(0) }
+
+    // Tick trigger for expiry countdown updates
+    var tickTrigger by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1_000L) // update every second
+            tickTrigger = System.currentTimeMillis()
+        }
+    }
+
     // Wi-Fi config for Device Owner provisioning QR
     var wifiSsid by remember { mutableStateOf("") }
     var wifiPassword by remember { mutableStateOf("") }
@@ -165,6 +213,13 @@ fun AdminGenerateEnrollmentScreen(
     val inputBg = if (isDark) DarkBgElevated else BgElevated
 
     val activeEnrollments = remember { mutableStateListOf<EnrollmentSession>() }
+
+    val visibleEnrollments = remember(activeEnrollments, tickTrigger) {
+        activeEnrollments.filter { session ->
+            val diff = session.expiresAt - tickTrigger
+            diff > -3_600_000L // keep shown until 1 hour after expiry
+        }
+    }
 
     LaunchedEffect(sessionsRefreshTick) {
         isLoadingSessions = true
@@ -466,7 +521,7 @@ fun AdminGenerateEnrollmentScreen(
                 item {
                     SectionHeader(
                         title = "ACTIVE ENROLLMENT SESSIONS",
-                        actionText = "${activeEnrollments.size} Active",
+                        actionText = "${visibleEnrollments.size} Active",
                         isDark = isDark
                     )
                 }
@@ -482,7 +537,7 @@ fun AdminGenerateEnrollmentScreen(
                             CircularProgressIndicator(color = PurpleCore)
                         }
                     }
-                } else if (activeEnrollments.isEmpty()) {
+                } else if (visibleEnrollments.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier
@@ -517,9 +572,10 @@ fun AdminGenerateEnrollmentScreen(
                         }
                     }
                 } else {
-                    items(activeEnrollments.toList(), key = { it.id }) { session ->
+                    items(visibleEnrollments.toList(), key = { it.id }) { session ->
                         ActiveEnrollmentCard(
                             session = session,
+                            currentTick = tickTrigger,
                             isDark = isDark,
                             textColor = textColor,
                             onRevoke = {
@@ -870,7 +926,7 @@ fun AdminGenerateEnrollmentScreen(
                 item {
                     SectionHeader(
                         title = "ACTIVE ENROLLMENT SESSIONS",
-                        actionText = "${activeEnrollments.size} Active",
+                        actionText = "${visibleEnrollments.size} Active",
                         isDark = isDark
                     )
                 }
@@ -886,7 +942,7 @@ fun AdminGenerateEnrollmentScreen(
                             CircularProgressIndicator(color = PurpleCore)
                         }
                     }
-                } else if (activeEnrollments.isEmpty()) {
+                } else if (visibleEnrollments.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier
@@ -921,9 +977,10 @@ fun AdminGenerateEnrollmentScreen(
                         }
                     }
                 } else {
-                    items(activeEnrollments.toList(), key = { it.id }) { session ->
+                    items(visibleEnrollments.toList(), key = { it.id }) { session ->
                         ActiveEnrollmentCard(
                             session = session,
+                            currentTick = tickTrigger,
                             isDark = isDark,
                             textColor = textColor,
                             onRevoke = {
@@ -1051,6 +1108,7 @@ private fun String?.parseIsoMillisOrNow(): Long {
 @Composable
 private fun ActiveEnrollmentCard(
     session: EnrollmentSession,
+    currentTick: Long,
     isDark: Boolean,
     textColor: Color,
     onRevoke: () -> Unit
@@ -1099,24 +1157,21 @@ private fun ActiveEnrollmentCard(
                 Spacer(Modifier.height(4.dp))
 
                 // Countdown timer
-                val timeLeft by produceState(
-                    initialValue = "Calculating...",
-                    key1 = session.expiresAt
-                ) {
-                    while (true) {
-                        val remaining = session.expiresAt - System.currentTimeMillis()
-                        if (remaining <= 0) {
-                            value = "Expired"
-                            break
-                        }
-                        val h = remaining / 3600000
-                        val m = (remaining % 3600000) / 60000
-                        val s = (remaining % 60000) / 1000
-                        value = "Expires in ${h}h ${m}m ${s}s"
-                        delay(1000)
-                    }
-                }
-                Text(timeLeft, fontFamily = JetBrainsMono, fontSize = 10.sp, color = Warning)
+                val (expiryText, expiryColor, isWarning) = getExpiryDisplay(session.expiresAt, currentTick)
+                val alpha by animateFloatAsState(
+                    targetValue = if (isWarning) {
+                        if ((currentTick / 500) % 2 == 0L) 1f else 0.3f
+                    } else 1f,
+                    animationSpec = tween(500),
+                    label = "blink"
+                )
+                Text(
+                    expiryText,
+                    fontFamily = JetBrainsMono,
+                    fontSize = 10.sp,
+                    color = expiryColor.copy(alpha = if (isWarning) alpha else 1f),
+                    fontWeight = if (isWarning) FontWeight.Bold else FontWeight.Normal
+                )
             }
 
             Spacer(Modifier.width(8.dp))

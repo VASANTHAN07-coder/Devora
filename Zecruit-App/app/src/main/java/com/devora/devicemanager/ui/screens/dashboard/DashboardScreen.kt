@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Assessment
@@ -44,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -64,8 +64,6 @@ import com.devora.devicemanager.ui.components.DevoraCard
 import com.devora.devicemanager.ui.components.SectionHeader
 import com.devora.devicemanager.network.DashboardStats
 import com.devora.devicemanager.network.DeviceActivityResponse
-import com.devora.devicemanager.network.MdmAlertResponse
-import com.devora.devicemanager.network.MarkAlertsReadRequest
 import com.devora.devicemanager.network.RetrofitClient
 import com.devora.devicemanager.ui.theme.BgBase
 import com.devora.devicemanager.ui.theme.BgElevated
@@ -87,12 +85,11 @@ import com.devora.devicemanager.ui.theme.Warning as WarningColor
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
 
 // ══════════════════════════════════════
 // STAT DATA CLASS
@@ -116,20 +113,23 @@ private data class Activity(
     val color: Color
 )
 
-private fun formatTimeAgo(isoDateTime: String?): String {
-    if (isoDateTime.isNullOrEmpty()) return "just now"
+private fun getTimeAgo(timestamp: String?, currentTime: Long): String {
+    if (timestamp.isNullOrEmpty()) return "Just now"
     return try {
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-        val date = sdf.parse(isoDateTime) ?: return "just now"
-        val diffSec = (System.currentTimeMillis() - date.time) / 1000
+        sdf.timeZone = TimeZone.getTimeZone("UTC")
+        val date = sdf.parse(timestamp)
+        val diff = currentTime - (date?.time ?: currentTime)
+
         when {
-            diffSec < 60 -> "just now"
-            diffSec < 3600 -> "${diffSec / 60}m ago"
-            diffSec < 86400 -> "${diffSec / 3600}h ago"
-            else -> "${diffSec / 86400}d ago"
+            diff < 60_000L -> "Just now"
+            diff < 3_600_000L -> "${diff / 60_000L} min ago"
+            diff < 86_400_000L -> "${diff / 3_600_000L}h ago"
+            diff < 604_800_000L -> "${diff / 86_400_000L}d ago"
+            else -> SimpleDateFormat("dd MMM", Locale.getDefault()).format(date ?: Date())
         }
     } catch (e: Exception) {
-        "just now"
+        "Unknown"
     }
 }
 
@@ -164,6 +164,15 @@ fun DashboardScreen(
         }
     }
 
+    // Keep a clock ticking so timestamps auto-update
+    var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(60_000L) // update every 1 minute
+            currentTime = System.currentTimeMillis()
+        }
+    }
+
     // Real activities from device_activities table
     var recentActivities by remember { mutableStateOf<List<DeviceActivityResponse>>(emptyList()) }
 
@@ -177,25 +186,7 @@ fun DashboardScreen(
             } catch (e: Exception) {
                 Log.e("DashboardScreen", "Failed to fetch activities", e)
             }
-            delay(30_000L) // refresh every 30s
-        }
-    }
-
-    // Unread alert count for bell badge
-    var unreadCount by remember { mutableStateOf(0) }
-    var showAlerts by remember { mutableStateOf(false) }
-    var unreadAlerts by remember { mutableStateOf<List<MdmAlertResponse>>(emptyList()) }
-    val coroutineScope = rememberCoroutineScope()
-
-    LaunchedEffect("alertCount") {
-        while (true) {
-            try {
-                val resp = RetrofitClient.api.getUnreadAlertCount()
-                if (resp.isSuccessful) {
-                    unreadCount = resp.body()?.count ?: 0
-                }
-            } catch (_: Exception) { }
-            delay(60_000L) // poll every 60s
+            delay(120_000L) // refresh every 2 minutes
         }
     }
 
@@ -261,43 +252,6 @@ fun DashboardScreen(
                                 contentDescription = "Toggle theme",
                                 tint = PurpleCore
                             )
-                        }
-                        Box {
-                            IconButton(onClick = {
-                                coroutineScope.launch {
-                                    try {
-                                        val resp = RetrofitClient.api.getUnreadAlerts()
-                                        if (resp.isSuccessful) {
-                                            unreadAlerts = resp.body() ?: emptyList()
-                                        }
-                                    } catch (_: Exception) { }
-                                    showAlerts = true
-                                }
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Filled.Notifications,
-                                    contentDescription = "Notifications",
-                                    tint = PurpleCore
-                                )
-                            }
-                            if (unreadCount > 0) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(18.dp)
-                                        .background(Danger, CircleShape)
-                                        .align(Alignment.TopEnd)
-                                        .padding(top = 4.dp, end = 4.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = if (unreadCount > 9) "9+" else "$unreadCount",
-                                        fontFamily = JetBrainsMono,
-                                        fontSize = 9.sp,
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
                         }
                     }
                 }
@@ -514,7 +468,7 @@ fun DashboardScreen(
                             Activity(
                                 description = a.description ?: "Unknown activity",
                                 device = if (!a.deviceId.isNullOrBlank()) "Device ···${a.deviceId!!.takeLast(6)}" else "",
-                                time = formatTimeAgo(a.createdAt),
+                                time = getTimeAgo(a.createdAt, currentTime),
                                 color = when (a.severity) {
                                     "CRITICAL" -> Danger
                                     "WARNING" -> WarningColor
@@ -607,300 +561,4 @@ fun DashboardScreen(
         }
     }
 
-    // ══════════════════════════════════════
-    // ALERTS BOTTOM SHEET
-    // ══════════════════════════════════════
-    if (showAlerts) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
-            onDismissRequest = { showAlerts = false },
-            sheetState = sheetState,
-            containerColor = if (isDark) DarkBgBase else Color.White,
-            dragHandle = {
-                Box(
-                    modifier = Modifier
-                        .padding(top = 12.dp, bottom = 4.dp)
-                        .width(40.dp)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(PurpleCore.copy(alpha = 0.25f))
-                )
-            }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 200.dp, max = 550.dp)
-            ) {
-                // Header
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
-                        .padding(bottom = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(PurpleCore.copy(alpha = 0.10f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Filled.Notifications,
-                            contentDescription = null,
-                            tint = PurpleCore,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            "Notifications",
-                            fontFamily = PlusJakartaSans,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = textColor
-                        )
-                        Text(
-                            "${unreadAlerts.size} unread alert${if (unreadAlerts.size != 1) "s" else ""}",
-                            fontFamily = JetBrainsMono,
-                            fontSize = 11.sp,
-                            color = TextMuted
-                        )
-                    }
-                    if (unreadAlerts.isNotEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Danger.copy(alpha = 0.08f))
-                                .clickable {
-                                    coroutineScope.launch {
-                                        try {
-                                            val allIds = unreadAlerts.map { it.id }
-                                            RetrofitClient.api.markAlertsRead(
-                                                MarkAlertsReadRequest(allIds)
-                                            )
-                                            unreadAlerts = emptyList()
-                                            unreadCount = 0
-                                        } catch (_: Exception) { }
-                                    }
-                                }
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Text(
-                                "Clear All",
-                                fontFamily = DMSans,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Danger
-                            )
-                        }
-                    }
-                }
-
-                HorizontalDivider(
-                    color = if (isDark) PurpleCore.copy(alpha = 0.08f) else BgElevated,
-                    thickness = 1.dp
-                )
-
-                if (unreadAlerts.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 48.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Box(
-                                modifier = Modifier
-                                    .size(56.dp)
-                                    .clip(CircleShape)
-                                    .background(Success.copy(alpha = 0.08f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Filled.CheckCircle,
-                                    contentDescription = null,
-                                    tint = Success,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                "All clear!",
-                                fontFamily = PlusJakartaSans,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 16.sp,
-                                color = textColor
-                            )
-                            Text(
-                                "No unread notifications",
-                                fontFamily = DMSans,
-                                fontSize = 13.sp,
-                                color = TextMuted
-                            )
-                        }
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        contentPadding = PaddingValues(vertical = 8.dp)
-                    ) {
-                        items(unreadAlerts) { alert ->
-                            val alertColor = when (alert.severity) {
-                                "CRITICAL" -> Danger
-                                "WARNING" -> WarningColor
-                                else -> PurpleCore
-                            }
-                            val alertIcon = when (alert.severity) {
-                                "CRITICAL" -> Icons.Outlined.Security
-                                "WARNING" -> Icons.Filled.Warning
-                                else -> Icons.Filled.Notifications
-                            }
-                            val severityLabel = when (alert.severity) {
-                                "CRITICAL" -> "Critical"
-                                "WARNING" -> "Warning"
-                                else -> "Info"
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(
-                                        if (isDark) alertColor.copy(alpha = 0.06f)
-                                        else alertColor.copy(alpha = 0.04f)
-                                    )
-                                    .border(
-                                        1.dp,
-                                        alertColor.copy(alpha = 0.12f),
-                                        RoundedCornerShape(12.dp)
-                                    )
-                                    .padding(12.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.Top
-                                ) {
-                                    // Severity icon
-                                    Box(
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .clip(CircleShape)
-                                            .background(alertColor.copy(alpha = 0.12f)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            alertIcon,
-                                            contentDescription = null,
-                                            tint = alertColor,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        // Severity + Type badges row
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .clip(RoundedCornerShape(4.dp))
-                                                    .background(alertColor.copy(alpha = 0.12f))
-                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                                            ) {
-                                                Text(
-                                                    severityLabel.uppercase(),
-                                                    fontFamily = JetBrainsMono,
-                                                    fontSize = 8.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = alertColor
-                                                )
-                                            }
-                                            if (!alert.alertType.isNullOrBlank()) {
-                                                Text(
-                                                    alert.alertType!!.replace("_", " "),
-                                                    fontFamily = JetBrainsMono,
-                                                    fontSize = 9.sp,
-                                                    color = TextMuted
-                                                )
-                                            }
-                                        }
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        // Alert message
-                                        Text(
-                                            text = alert.message ?: "Alert",
-                                            fontFamily = DMSans,
-                                            fontWeight = FontWeight.Medium,
-                                            fontSize = 13.sp,
-                                            color = textColor,
-                                            maxLines = 3
-                                        )
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        // Footer: employee + time + dismiss
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            if (!alert.employeeName.isNullOrBlank()) {
-                                                Text(
-                                                    alert.employeeName!!,
-                                                    fontFamily = JetBrainsMono,
-                                                    fontSize = 9.sp,
-                                                    color = PurpleCore.copy(alpha = 0.7f)
-                                                )
-                                                Text(
-                                                    " · ",
-                                                    fontSize = 9.sp,
-                                                    color = TextMuted
-                                                )
-                                            }
-                                            Text(
-                                                formatTimeAgo(alert.createdAt),
-                                                fontFamily = JetBrainsMono,
-                                                fontSize = 9.sp,
-                                                color = TextMuted
-                                            )
-                                            Spacer(modifier = Modifier.weight(1f))
-                                            Box(
-                                                modifier = Modifier
-                                                    .clip(RoundedCornerShape(6.dp))
-                                                    .background(alertColor.copy(alpha = 0.08f))
-                                                    .clickable {
-                                                        coroutineScope.launch {
-                                                            try {
-                                                                RetrofitClient.api.markAlertsRead(
-                                                                    MarkAlertsReadRequest(listOf(alert.id))
-                                                                )
-                                                                unreadAlerts = unreadAlerts.filter { it.id != alert.id }
-                                                                unreadCount = (unreadCount - 1).coerceAtLeast(0)
-                                                            } catch (_: Exception) { }
-                                                        }
-                                                    }
-                                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                                            ) {
-                                                Text(
-                                                    "Dismiss",
-                                                    fontFamily = DMSans,
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    color = alertColor
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-        }
-    }
 }
