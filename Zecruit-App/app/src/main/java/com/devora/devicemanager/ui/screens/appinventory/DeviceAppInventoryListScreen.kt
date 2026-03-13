@@ -1,5 +1,6 @@
 package com.devora.devicemanager.ui.screens.appinventory
 
+import com.devora.devicemanager.data.remote.RemoteDataSource
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -44,7 +45,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devora.devicemanager.network.DeviceResponse
-import com.devora.devicemanager.network.RetrofitClient
 import com.devora.devicemanager.ui.components.DevoraCard
 import com.devora.devicemanager.ui.components.StatusBadge
 import com.devora.devicemanager.ui.theme.BgBase
@@ -73,7 +73,7 @@ fun DeviceAppInventoryListScreen(
 
     LaunchedEffect(Unit) {
         try {
-            val response = RetrofitClient.api.getDeviceList()
+            val response = RemoteDataSource.getDeviceList()
             if (response.isSuccessful) {
                 devices = response.body()?.filter {
                     it.status.equals("ACTIVE", ignoreCase = true) ||

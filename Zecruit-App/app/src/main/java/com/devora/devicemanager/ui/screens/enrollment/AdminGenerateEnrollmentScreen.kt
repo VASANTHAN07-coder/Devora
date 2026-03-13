@@ -1,5 +1,6 @@
 package com.devora.devicemanager.ui.screens.enrollment
 
+import com.devora.devicemanager.data.remote.RemoteDataSource
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
@@ -106,7 +107,6 @@ import com.devora.devicemanager.ui.theme.Warning
 import com.devora.devicemanager.enrollment.QrProvisioningHelper
 import com.devora.devicemanager.network.GenerateEnrollmentTokenRequest
 import com.devora.devicemanager.network.EnrollmentTokenResponse
-import com.devora.devicemanager.network.RetrofitClient
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -225,7 +225,7 @@ fun AdminGenerateEnrollmentScreen(
         isLoadingSessions = true
         sessionsError = null
         try {
-            val response = RetrofitClient.api.getActiveEnrollments()
+            val response = RemoteDataSource.getActiveEnrollments()
             if (response.isSuccessful) {
                 val sessions = (response.body() ?: emptyList()).map { it.toEnrollmentSession() }
                 activeEnrollments.clear()
@@ -465,7 +465,7 @@ fun AdminGenerateEnrollmentScreen(
                             coroutineScope.launch {
                                 isGenerating = true
                                 try {
-                                    val response = RetrofitClient.api.generateEnrollmentToken(
+                                    val response = RemoteDataSource.generateEnrollmentToken(
                                         GenerateEnrollmentTokenRequest(
                                             employeeId = assignedEmployee.trim(),
                                             employeeName = employeeName.trim(),

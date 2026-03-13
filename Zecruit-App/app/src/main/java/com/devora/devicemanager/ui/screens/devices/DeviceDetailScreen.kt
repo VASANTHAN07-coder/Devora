@@ -1,5 +1,6 @@
 package com.devora.devicemanager.ui.screens.devices
 
+import com.devora.devicemanager.data.remote.RemoteDataSource
 import android.graphics.BitmapFactory
 import android.util.Base64
 import android.util.Log
@@ -85,7 +86,6 @@ import com.devora.devicemanager.network.DeviceResponse
 import com.devora.devicemanager.network.LocationReportRequest
 import com.devora.devicemanager.network.PolicyUpdateRequest
 import com.devora.devicemanager.network.RestrictAppRequestNew
-import com.devora.devicemanager.network.RetrofitClient
 import com.devora.devicemanager.ui.components.DevoraCard
 import com.devora.devicemanager.ui.components.SectionHeader
 import com.devora.devicemanager.ui.components.StatusBadge
@@ -126,7 +126,7 @@ fun DeviceDetailScreen(
 
     LaunchedEffect(deviceId) {
         try {
-            val response = RetrofitClient.api.getDeviceList()
+            val response = RemoteDataSource.getDeviceList()
             if (response.isSuccessful) {
                 deviceResponse = response.body()?.find { it.deviceId == deviceId }
             }
@@ -319,7 +319,7 @@ fun DeviceDetailScreen(
                 showLockDialog = false
                 coroutineScope.launch {
                     try {
-                        val resp = RetrofitClient.api.lockDevice(deviceId)
+                        val resp = RemoteDataSource.lockDevice(deviceId)
                         if (resp.isSuccessful) {
                             snackbarHostState.showSnackbar("✓ Lock command sent")
                         } else {
@@ -599,7 +599,7 @@ fun DeviceDetailScreen(
                                         wipeStep = 0
                                         coroutineScope.launch {
                                             try {
-                                                val resp = RetrofitClient.api.wipeDevice(deviceId)
+                                                val resp = RemoteDataSource.wipeDevice(deviceId)
                                                 if (resp.isSuccessful) {
                                                     snackbarHostState.showSnackbar("⚠ Device wipe command sent")
                                                 } else {
@@ -794,7 +794,7 @@ private fun AppsTab(deviceId: String, isDark: Boolean, textColor: Color) {
     LaunchedEffect(deviceId) {
         isLoading = true
         try {
-            val response = RetrofitClient.api.getAppInventory(deviceId)
+            val response = RemoteDataSource.getAppInventory(deviceId)
             if (response.isSuccessful) {
                 apps = response.body() ?: emptyList()
                 errorMsg = null
@@ -802,7 +802,7 @@ private fun AppsTab(deviceId: String, isDark: Boolean, textColor: Color) {
                 errorMsg = "Failed to load apps (${response.code()})"
             }
             // Load restricted apps
-            val restrictResp = RetrofitClient.api.getRestrictedApps(deviceId)
+            val restrictResp = RemoteDataSource.getRestrictedApps(deviceId)
             if (restrictResp.isSuccessful) {
                 restrictedApps = (restrictResp.body() ?: emptyList()).associateBy { it.packageName }
             }
@@ -1071,10 +1071,10 @@ private fun AppsTab(deviceId: String, isDark: Boolean, textColor: Color) {
                                         installSource = app.installSource,
                                         restricted = !isRestricted
                                     )
-                                    val resp = RetrofitClient.api.restrictApp(deviceId, req)
+                                    val resp = RemoteDataSource.restrictApp(deviceId, req)
                                     if (resp.isSuccessful) {
                                         // Refresh restricted apps
-                                        val rResp = RetrofitClient.api.getRestrictedApps(deviceId)
+                                        val rResp = RemoteDataSource.getRestrictedApps(deviceId)
                                         if (rResp.isSuccessful) {
                                             restrictedApps = (rResp.body() ?: emptyList()).associateBy { it.packageName }
                                         }
@@ -1269,7 +1269,7 @@ private fun ActivityTab(deviceId: String, isDark: Boolean, textColor: Color) {
     LaunchedEffect(deviceId) {
         isLoading = true
         try {
-            val response = RetrofitClient.api.getDeviceActivities(deviceId)
+            val response = RemoteDataSource.getDeviceActivities(deviceId)
             if (response.isSuccessful) {
                 activities = response.body() ?: emptyList()
             }
@@ -1381,14 +1381,14 @@ private fun ActionsTab(
     // Load policies and location
     LaunchedEffect(deviceId) {
         try {
-            val pResp = RetrofitClient.api.getDevicePolicies(deviceId)
+            val pResp = RemoteDataSource.getDevicePolicies(deviceId)
             if (pResp.isSuccessful) {
                 cameraDisabled = pResp.body()?.cameraDisabled ?: false
                 policyLoaded = true
             }
         } catch (_: Exception) { }
         try {
-            val lResp = RetrofitClient.api.getDeviceLocation(deviceId)
+            val lResp = RemoteDataSource.getDeviceLocation(deviceId)
             if (lResp.isSuccessful) {
                 location = lResp.body()
             }
@@ -1415,7 +1415,7 @@ private fun ActionsTab(
                     coroutineScope.launch {
                         try {
                             val newVal = !cameraDisabled
-                            val resp = RetrofitClient.api.updateDevicePolicy(
+                            val resp = RemoteDataSource.updateDevicePolicy(
                                 deviceId,
                                 PolicyUpdateRequest(cameraDisabled = newVal)
                             )

@@ -1,5 +1,6 @@
 package com.devora.devicemanager.ui.screens.policies
 
+import com.devora.devicemanager.data.remote.RemoteDataSource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -69,7 +70,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.devora.devicemanager.network.RetrofitClient
 import com.devora.devicemanager.ui.components.DevoraCard
 import com.devora.devicemanager.ui.components.SectionHeader
 import com.devora.devicemanager.ui.theme.BgBase
@@ -136,7 +136,7 @@ fun PoliciesScreen(
 
     LaunchedEffect(Unit) {
         try {
-            val response = RetrofitClient.api.getDashboardStats()
+            val response = RemoteDataSource.getDashboardStats()
             if (response.isSuccessful) {
                 val stats = response.body()
                 totalDevices = stats?.totalDevices ?: 0

@@ -1,7 +1,5 @@
 package com.devora.devicemanager.ui.screens.dashboard
 
-import android.util.Log
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,11 +40,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,9 +59,7 @@ import androidx.compose.ui.unit.sp
 import com.devora.devicemanager.ui.components.DevoraBottomNav
 import com.devora.devicemanager.ui.components.DevoraCard
 import com.devora.devicemanager.ui.components.SectionHeader
-import com.devora.devicemanager.network.DashboardStats
 import com.devora.devicemanager.network.DeviceActivityResponse
-import com.devora.devicemanager.network.RetrofitClient
 import com.devora.devicemanager.ui.theme.BgBase
 import com.devora.devicemanager.ui.theme.BgElevated
 import com.devora.devicemanager.ui.theme.DMSans
@@ -87,9 +82,8 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 // ══════════════════════════════════════
 // STAT DATA CLASS
@@ -144,24 +138,13 @@ fun DashboardScreen(
     isDark: Boolean,
     onThemeToggle: () -> Unit
 ) {
+    val dashboardViewModel: DashboardViewModel = viewModel()
+    val dashboardUiState by dashboardViewModel.uiState.collectAsState()
+
     val bgColor = if (isDark) DarkBgBase else BgBase
     val textColor = if (isDark) DarkTextPrimary else TextPrimary
     val currentDate = remember {
         SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault()).format(Date())
-    }
-    var dashboardStats by remember { mutableStateOf<DashboardStats?>(null) }
-
-    LaunchedEffect(Unit) {
-        try {
-            val response = RetrofitClient.api.getDashboardStats()
-            if (response.isSuccessful) {
-                dashboardStats = response.body()
-            } else {
-                Log.e("DashboardScreen", "Stats fetch failed: ${response.code()}")
-            }
-        } catch (e: Exception) {
-            Log.e("DashboardScreen", "Failed to fetch dashboard stats", e)
-        }
     }
 
     // Keep a clock ticking so timestamps auto-update
@@ -173,22 +156,8 @@ fun DashboardScreen(
         }
     }
 
-    // Real activities from device_activities table
-    var recentActivities by remember { mutableStateOf<List<DeviceActivityResponse>>(emptyList()) }
-
-    LaunchedEffect("activities") {
-        while (true) {
-            try {
-                val response = RetrofitClient.api.getActivities(limit = 10)
-                if (response.isSuccessful) {
-                    recentActivities = response.body() ?: emptyList()
-                }
-            } catch (e: Exception) {
-                Log.e("DashboardScreen", "Failed to fetch activities", e)
-            }
-            delay(120_000L) // refresh every 2 minutes
-        }
-    }
+    val dashboardStats = dashboardUiState.stats
+    val recentActivities: List<DeviceActivityResponse> = dashboardUiState.recentActivities
 
     val totalDevices = dashboardStats?.totalDevices ?: 0
     val activeDevices = dashboardStats?.activeDevices ?: 0

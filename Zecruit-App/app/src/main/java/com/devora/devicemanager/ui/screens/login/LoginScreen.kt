@@ -1,5 +1,6 @@
 package com.devora.devicemanager.ui.screens.login
 
+import com.devora.devicemanager.data.remote.RemoteDataSource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -62,7 +63,6 @@ import android.util.Log
 import androidx.compose.ui.platform.LocalContext
 import com.devora.devicemanager.R
 import com.devora.devicemanager.network.AdminLoginRequest
-import com.devora.devicemanager.network.RetrofitClient
 import com.devora.devicemanager.session.SessionManager
 import com.devora.devicemanager.ui.components.ButtonVariant
 import com.devora.devicemanager.ui.components.DevoraButton
@@ -393,7 +393,7 @@ fun LoginScreen(
                                     scope.launch {
                                         try {
                                             val normalizedEmail = email.trim().lowercase()
-                                            val response = RetrofitClient.api.loginAdmin(
+                                            val response = RemoteDataSource.loginAdmin(
                                                 AdminLoginRequest(
                                                     email = normalizedEmail,
                                                     password = password

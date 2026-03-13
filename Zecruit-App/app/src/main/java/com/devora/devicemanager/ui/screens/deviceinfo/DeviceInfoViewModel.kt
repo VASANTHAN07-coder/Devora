@@ -1,5 +1,6 @@
 package com.devora.devicemanager.ui.screens.deviceinfo
 
+import com.devora.devicemanager.data.remote.RemoteDataSource
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,7 +12,6 @@ import com.devora.devicemanager.data.db.AppDatabase
 import com.devora.devicemanager.data.db.DeviceInfoEntity
 import com.devora.devicemanager.data.db.DeviceInfoSyncLogEntity
 import com.devora.devicemanager.network.DeviceInfoRequest
-import com.devora.devicemanager.network.RetrofitClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -98,7 +98,7 @@ class DeviceInfoViewModel(application: Application) : AndroidViewModel(applicati
                     deviceType = info.deviceType
                 )
 
-                val response = RetrofitClient.api.uploadDeviceInfo(request)
+                val response = RemoteDataSource.uploadDeviceInfo(request)
                 val now = Instant.now().toString()
 
                 if (response.isSuccessful) {

@@ -1,5 +1,6 @@
 package com.devora.devicemanager.ui.screens.employeedashboard
 
+import com.devora.devicemanager.data.remote.RemoteDataSource
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -83,7 +84,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.devora.devicemanager.collector.DeviceInfoCollector
 import com.devora.devicemanager.network.DeviceActivityResponse
-import com.devora.devicemanager.network.RetrofitClient
 import com.devora.devicemanager.session.SessionManager
 import com.devora.devicemanager.ui.components.DevoraCard
 import com.devora.devicemanager.ui.components.SectionHeader
@@ -195,7 +195,7 @@ fun EmployeeDashboardScreen(
 
         // 1. Fetch from Backend
         try {
-            val response = RetrofitClient.api.getDeviceActivities(deviceInfo.deviceId)
+            val response = RemoteDataSource.getDeviceActivities(deviceInfo.deviceId)
             if (response.isSuccessful) {
                 response.body()?.forEach { res ->
                     val icon = when (res.activityType) {
@@ -250,7 +250,7 @@ fun EmployeeDashboardScreen(
 
     suspend fun verifyDeviceStillActive() {
         try {
-            val response = RetrofitClient.api.checkDevice(deviceInfo.deviceId)
+            val response = RemoteDataSource.checkDevice(deviceInfo.deviceId)
             if (response.code() == 404) {
                 SessionManager.clearDeviceEnrollment(context)
                 Toast.makeText(
@@ -952,7 +952,7 @@ fun EmployeeDashboardScreen(
                                     // Notify backend and then sign out locally
                                     scope.launch {
                                         try {
-                                            RetrofitClient.api.signOutDevice(deviceInfo.deviceId)
+                                            RemoteDataSource.signOutDevice(deviceInfo.deviceId)
                                         } catch (e: Exception) {
                                             // Optional: Handle error or log it
                                         }

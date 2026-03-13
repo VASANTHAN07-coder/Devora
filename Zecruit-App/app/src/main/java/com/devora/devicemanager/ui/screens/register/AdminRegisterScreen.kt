@@ -1,5 +1,6 @@
 package com.devora.devicemanager.ui.screens.register
 
+import com.devora.devicemanager.data.remote.RemoteDataSource
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -55,7 +56,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devora.devicemanager.R
 import com.devora.devicemanager.network.AdminRegisterRequest
-import com.devora.devicemanager.network.RetrofitClient
 import com.devora.devicemanager.ui.components.ButtonVariant
 import com.devora.devicemanager.ui.components.DevoraButton
 import com.devora.devicemanager.ui.theme.BgElevated
@@ -248,7 +248,7 @@ fun AdminRegisterScreen(
                                     isLoading = true
                                     scope.launch {
                                         try {
-                                            val response = RetrofitClient.api.registerAdmin(
+                                            val response = RemoteDataSource.registerAdmin(
                                                 AdminRegisterRequest(
                                                     name = name.trim(),
                                                     email = email.trim(),

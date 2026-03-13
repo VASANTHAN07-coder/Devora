@@ -1,5 +1,6 @@
 package com.devora.devicemanager.ui.screens.reports
 
+import com.devora.devicemanager.data.remote.RemoteDataSource
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -58,7 +59,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.devora.devicemanager.network.RetrofitClient
 import com.devora.devicemanager.network.DeviceResponse
 import com.devora.devicemanager.ui.components.DevoraCard
 import com.devora.devicemanager.ui.components.SectionHeader
@@ -161,8 +161,8 @@ fun ViewReportsScreen(
 
     LaunchedEffect(Unit) {
         try {
-            val response = RetrofitClient.api.getDashboardStats()
-            val deviceResponse = RetrofitClient.api.getDeviceList()
+            val response = RemoteDataSource.getDashboardStats()
+            val deviceResponse = RemoteDataSource.getDeviceList()
             if (response.isSuccessful) {
                 val stats = response.body()
                 totalDevices = stats?.totalDevices ?: 0

@@ -1,15 +1,19 @@
 package com.devora.devicemanager
 
+import android.Manifest
 import android.app.AppOpsManager
+import android.content.pm.PackageManager
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.os.Process
 import android.provider.Settings
 import android.util.Log
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,6 +42,34 @@ import com.devora.devicemanager.ui.theme.ThemeViewModel
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
+
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            Log.d("MainActivity", "POST_NOTIFICATIONS granted=$granted")
+        }
+
+    private val locationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+            val fineGranted = result[Manifest.permission.ACCESS_FINE_LOCATION] == true
+            val coarseGranted = result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            Log.d("MainActivity", "Location permissions fine=$fineGranted, coarse=$coarseGranted")
+
+            // Request background location separately when foreground location is available.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && (fineGranted || coarseGranted)) {
+                requestBackgroundLocationIfNeeded()
+            }
+        }
+
+    private val backgroundLocationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            Log.d("MainActivity", "ACCESS_BACKGROUND_LOCATION granted=$granted")
+        }
+
+    private val readPhoneStatePermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            Log.d("MainActivity", "READ_PHONE_STATE granted=$granted")
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -56,6 +88,11 @@ class MainActivity : ComponentActivity() {
         // Start foreground heartbeat service — sends heartbeat every 30s so the
         // backend can detect uninstall within ~30–90 seconds.
         com.devora.devicemanager.sync.HeartbeatService.start(this)
+
+        // Request runtime permissions required by optional platform APIs.
+        requestNotificationPermissionIfNeeded()
+        requestLocationPermissionsIfNeeded()
+        requestReadPhoneStateIfNeeded()
 
         // Prompt for Usage Access permission (needed for app restriction enforcement
         // when Device Owner is not available)
@@ -173,6 +210,76 @@ class MainActivity : ComponentActivity() {
             })
         } catch (_: Exception) {
             Log.w("MainActivity", "Could not open Usage Access settings")
+        }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    private fun requestLocationPermissionsIfNeeded() {
+        val fineGranted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val coarseGranted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!fineGranted && !coarseGranted) {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+            return
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            requestBackgroundLocationIfNeeded()
+        }
+    }
+
+    private fun requestBackgroundLocationIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+
+        val bgGranted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_BACKGROUND_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!bgGranted) {
+            backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        }
+    }
+
+    private fun requestReadPhoneStateIfNeeded() {
+        val dpm = getSystemService(DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+        val isDeviceOwner = dpm.isDeviceOwnerApp(packageName)
+
+        // On API 29+, non-Device Owner apps cannot access IMEI/serial anyway.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !isDeviceOwner) return
+
+        val granted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.READ_PHONE_STATE
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!granted) {
+            readPhoneStatePermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
         }
     }
 }

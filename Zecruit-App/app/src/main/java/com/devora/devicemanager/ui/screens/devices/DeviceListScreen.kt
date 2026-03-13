@@ -1,5 +1,6 @@
 package com.devora.devicemanager.ui.screens.devices
 
+import com.devora.devicemanager.data.remote.RemoteDataSource
 import android.util.Log
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -68,7 +69,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devora.devicemanager.network.DeviceResponse
-import com.devora.devicemanager.network.RetrofitClient
 import com.devora.devicemanager.ui.components.DevoraBottomNav
 import com.devora.devicemanager.ui.components.DevoraCard
 import com.devora.devicemanager.ui.components.StatusBadge
@@ -145,7 +145,7 @@ fun DeviceListScreen(
     LaunchedEffect(refreshTick) {
         isLoading = enrolledDevices.isEmpty()
         try {
-            val response = RetrofitClient.api.getDeviceList()
+            val response = RemoteDataSource.getDeviceList()
             if (response.isSuccessful) {
                 enrolledDevices = (response.body() ?: emptyList()).map { it.toDevice() }
                 fetchError = null
@@ -598,7 +598,7 @@ fun DeviceListScreen(
                         isDeleting = true
                         coroutineScope.launch {
                             try {
-                                val response = RetrofitClient.api.deleteDevice(device.deviceId)
+                                val response = RemoteDataSource.deleteDevice(device.deviceId)
                                 if (response.isSuccessful) {
                                     enrolledDevices = enrolledDevices.filter { it.deviceId != device.deviceId }
                                     showDeleteDialog = false

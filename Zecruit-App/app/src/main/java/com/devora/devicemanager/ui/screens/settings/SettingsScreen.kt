@@ -1,5 +1,6 @@
 package com.devora.devicemanager.ui.screens.settings
 
+import com.devora.devicemanager.data.remote.RemoteDataSource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -65,7 +66,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.devora.devicemanager.enrollment.DevicePolicyHelper
-import com.devora.devicemanager.network.RetrofitClient
 import com.devora.devicemanager.session.SessionManager
 import com.devora.devicemanager.sync.SyncManager
 import kotlinx.coroutines.launch
@@ -448,7 +448,7 @@ fun SettingsScreen(
                                         connectionStatus = "testing"
                                         val startTime = System.currentTimeMillis()
                                         try {
-                                            val response = RetrofitClient.api.getDashboardStats()
+                                            val response = RemoteDataSource.getDashboardStats()
                                             val elapsed = System.currentTimeMillis() - startTime
                                             connectionLatency = "${elapsed}ms"
                                             connectionStatus = if (response.isSuccessful) "connected" else "failed"

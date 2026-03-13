@@ -1,5 +1,6 @@
 package com.devora.devicemanager.ui.screens.appinventory
 
+import com.devora.devicemanager.data.remote.RemoteDataSource
 import android.graphics.BitmapFactory
 import android.util.Base64
 import android.util.Log
@@ -55,7 +56,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devora.devicemanager.network.AppInventoryItem
 import com.devora.devicemanager.network.RestrictAppRequestNew
-import com.devora.devicemanager.network.RetrofitClient
 import com.devora.devicemanager.ui.components.DevoraCard
 import com.devora.devicemanager.ui.components.SectionHeader
 import com.devora.devicemanager.ui.theme.BgBase
@@ -94,7 +94,7 @@ fun DeviceAppListScreen(
 
     LaunchedEffect(deviceId) {
         try {
-            val response = RetrofitClient.api.getAppInventory(deviceId)
+            val response = RemoteDataSource.getAppInventory(deviceId)
             if (response.isSuccessful) {
                 allApps = response.body() ?: emptyList()
             }
@@ -102,7 +102,7 @@ fun DeviceAppListScreen(
             Log.e("DeviceAppList", "Failed to fetch app inventory: ${e.message}")
         }
         try {
-            val rsp = RetrofitClient.api.getRestrictedApps(deviceId)
+            val rsp = RemoteDataSource.getRestrictedApps(deviceId)
             if (rsp.isSuccessful) {
                 restrictedPackages = (rsp.body() ?: emptyList())
                     .filter { it.restricted }
@@ -468,7 +468,7 @@ fun DeviceAppListScreen(
                                     ) {
                                         scope.launch {
                                             try {
-                                                val rsp = RetrofitClient.api.restrictApp(
+                                                val rsp = RemoteDataSource.restrictApp(
                                                     deviceId,
                                                     RestrictAppRequestNew(
                                                         packageName = app.packageName,
