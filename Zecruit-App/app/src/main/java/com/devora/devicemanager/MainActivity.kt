@@ -35,6 +35,7 @@ import com.devora.devicemanager.sync.LocationSyncWorker
 import com.devora.devicemanager.ui.navigation.AppNavigation
 import com.devora.devicemanager.ui.theme.DevoraTheme
 import com.devora.devicemanager.ui.theme.ThemeViewModel
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,6 +80,17 @@ class MainActivity : ComponentActivity() {
                         employeeId = getStoredEmployeeId()
                     )
                     syncStatus = if (result.success) "success" else "failed:${result.message}"
+                }
+            }
+
+            // Show terminal sync status briefly, then hide banner.
+            LaunchedEffect(syncStatus) {
+                val status = syncStatus ?: return@LaunchedEffect
+                if (status == "success" || status.startsWith("failed")) {
+                    delay(3500)
+                    if (syncStatus == status) {
+                        syncStatus = null
+                    }
                 }
             }
 

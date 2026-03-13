@@ -129,7 +129,6 @@ fun EmployeeDashboardScreen(
     val scope = rememberCoroutineScope()
     val deviceInfo = remember { DeviceInfoCollector.collect(context) }
     val lifecycleOwner = LocalLifecycleOwner.current
-    var selectedNavItem by remember { mutableIntStateOf(0) }
     var showSignOutDialog by remember { mutableStateOf(false) }
     var checkTick by remember { mutableIntStateOf(0) }
     val latestOnEnrollmentRevoked by rememberUpdatedState(onEnrollmentRevoked)
@@ -265,17 +264,9 @@ fun EmployeeDashboardScreen(
 
     val bgColor = if (isDark) DarkBgBase else BgBase
     val textColor = if (isDark) DarkTextPrimary else TextPrimary
-    val surfaceBg = if (isDark) DarkBgSurface else BgSurface
 
     Scaffold(
-        containerColor = bgColor,
-        bottomBar = {
-            EmployeeBottomNav(
-                selectedIndex = selectedNavItem,
-                onItemSelected = { selectedNavItem = it },
-                isDark = isDark
-            )
-        }
+        containerColor = bgColor
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -791,65 +782,6 @@ fun EmployeeDashboardScreen(
             Spacer(Modifier.height(16.dp))
 
             // ══════════════════════════════════════
-            // SUPPORT CARD
-            // ══════════════════════════════════════
-            DevoraCard(isDark = isDark) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            val intent = Intent(Intent.ACTION_SENDTO).apply {
-                                data = Uri.parse("mailto:admin@enterprise.com")
-                            }
-                            context.startActivity(intent)
-                        },
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(PurpleDim),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Outlined.SupportAgent,
-                                contentDescription = null,
-                                tint = PurpleCore,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                "IT Support",
-                                fontFamily = PlusJakartaSans,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 15.sp,
-                                color = textColor
-                            )
-                            Text(
-                                "Contact your administrator",
-                                fontFamily = DMSans,
-                                fontSize = 12.sp,
-                                color = TextMuted
-                            )
-                        }
-                    }
-                    Icon(
-                        Icons.AutoMirrored.Outlined.ArrowForward,
-                        contentDescription = null,
-                        tint = PurpleCore,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // ══════════════════════════════════════
             // SIGN OUT
             // ══════════════════════════════════════
             Box(
@@ -1019,104 +951,6 @@ fun EmployeeDashboardScreen(
                             }
                         }
                     }
-                }
-            }
-        }
-    }
-}
-
-// ══════════════════════════════════════
-// EMPLOYEE BOTTOM NAV (3 items)
-// ══════════════════════════════════════
-
-private data class EmpNavItem(
-    val label: String,
-    val outlinedIcon: ImageVector,
-    val filledIcon: ImageVector
-)
-
-private val empNavItems = listOf(
-    EmpNavItem("Home", Icons.Outlined.Home, Icons.Filled.Home),
-    EmpNavItem("My Device", Icons.Outlined.PhoneAndroid, Icons.Filled.PhoneAndroid),
-    EmpNavItem("Support", Icons.Outlined.SupportAgent, Icons.Filled.SupportAgent)
-)
-
-@Composable
-private fun EmployeeBottomNav(
-    selectedIndex: Int,
-    onItemSelected: (Int) -> Unit,
-    isDark: Boolean
-) {
-    val surfaceBg = if (isDark) DarkBgSurface else BgSurface
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(surfaceBg)
-    ) {
-        // Top border
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(PurpleCore.copy(alpha = 0.12f))
-                .align(Alignment.TopCenter)
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp, horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            empNavItems.forEachIndexed { index, item ->
-                val isSelected = selectedIndex == index
-
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { onItemSelected(index) }
-                        .padding(vertical = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(if (isSelected) 40.dp else 36.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (isSelected) PurpleCore.copy(alpha = 0.12f) else Color.Transparent
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (isSelected) item.filledIcon else item.outlinedIcon,
-                            contentDescription = item.label,
-                            tint = if (isSelected) PurpleCore else TextMuted,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-
-                    Spacer(Modifier.height(2.dp))
-
-                    // Selected dot
-                    if (isSelected) {
-                        Box(
-                            modifier = Modifier
-                                .size(4.dp)
-                                .clip(CircleShape)
-                                .background(PurpleCore)
-                        )
-                    }
-
-                    Spacer(Modifier.height(2.dp))
-
-                    Text(
-                        item.label,
-                        fontFamily = if (isSelected) PlusJakartaSans else DMSans,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                        fontSize = 10.sp,
-                        color = if (isSelected) PurpleCore else TextMuted
-                    )
                 }
             }
         }
